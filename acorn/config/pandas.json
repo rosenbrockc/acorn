@@ -1,0 +1,4 @@
+{"pandas.core.frame.DataFrame": {"describe": {"transform": ["self"],
+					      "slice": ["count:0,0", "mean:0,1", "std:0,2"]},
+				 "ndim": {}}
+}

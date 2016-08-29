@@ -24,21 +24,27 @@ def _read_single(parser, filepath):
     parser (ConfigParser): parser to read the file into.
     filepath (str): full path to the config file.
     """
+    from os import path
     global packages
-    if path.isfile(confpath):
-        result.readfp(open(confpath))
+    if path.isfile(filepath):
+        parser.readfp(open(filepath))
 
 def settings(package):
     """Returns the config settings for the specified package.
 
     Args:
-    package (str): name of the python package to get settings for.
+        package (str): name of the python package to get settings for.
     """
     global packages
     if package not in packages:
         from os import path
-        from ConfigParser import ConfigParser
-        result = ConfigParser.ConfigParser()
+        try:
+            from configparser import ConfigParser
+        except ImportError:
+            #py3 rename of the module to lower case.
+            from ConfigParser import ConfigParser
+            
+        result = ConfigParser()
         if package != "acorn":
             confpath = _package_path(package)
             _read_single(result, confpath)
@@ -46,3 +52,30 @@ def settings(package):
         packages[package] = result
 
     return packages[package]
+
+def _descriptor_path(package):
+    """Returns the full path to the default package configuration file.
+
+    Args:
+    package (str): name of the python package to return a path for.    
+    """
+    from acorn.utility import reporoot
+    from os import path
+    return path.join(reporoot, "acorn", "config", "{}.json".format(package))
+
+def descriptors(package):
+    """Returns a dictionary of descriptors deserialized from JSON for the
+    specified package.
+
+    Args:
+        package (str): name of the python package to get settings for.
+    """
+    from os import path
+    dpath = _descriptor_path(package)
+    if path.isfile(dpath):
+        import json
+        with open(dpath) as f:
+            jdb = json.load(f)
+        return jdb
+    else:
+        return None
