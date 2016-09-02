@@ -1,26 +1,29 @@
 """Methods for dynamically adding decorators to all the methods and
-classes within a module. Uses some code from
-https://github.com/clarete/forbiddenfruit to handle the c-complied extension
-modules that are common in optimized codes.
+classes within a module.
 """
 from acorn import msg
-from database import tracker, record
+from acorn.logging.database import tracker, record
 from time import time
-from analysis import analyze
+from acorn.logging.analysis import analyze
 def isbound(method):
-    """Returns True if the method is bounded (i.e., does *not* require a
+    """Returns True if the method is bounded (i.e., *requires* a
     class instance to run.)
     """
+    from inspect import ismethod
     if hasattr(method, "__acorn__") and method.__acorn__ is not None:
-        return method.__acorn__.im_self
-    elif hasattr(method, "im_self"):
-        return method.im_self is not None
+        return ismethod(method.__acorn__)
     else:
-        return False
+        return ismethod(method)
 
 name_filters = {}
 """dict: keys are package names; values are dicts of lists: 1)
 :meth:`~fnmatch.fnmatch` patterns; 2) :meth:`re.match` patterns.
+"""
+_decorated_packs = ["acorn"]
+"""list: of package names that have had :func:`decorate` called on them.
+"""
+_def_stackdepth = 3
+"""int: default stack depth when not specified by a config file.
 """
 def _get_name_filter(package, context="decorate", reparse=False):
     """Makes sure that the name filters for the specified package have been
@@ -145,7 +148,9 @@ def _tracker_str(item):
         else:
             return instance.uuid
     else:
-        return str(item)
+        #Must be a simple built-in type like `int` or `float`, in which case we
+        #don't want to convert it to a string.
+        return item
     
 def _check_args(*argl, **argd):
     """Checks the specified argument lists for objects that are trackable.
@@ -159,7 +164,24 @@ def _check_args(*argl, **argd):
         
     return args
 
-def _reduced_stack(package):
+def _decorated_path(spath):
+    """Checks whether the specified code path is from a package that has been
+    decorated by `acorn`.
+
+    Args:
+        spath (str): path to the module code file where the function was
+          defined.
+    """
+    #When multiple packages are decorated, the stacks can become interdependent;
+    #in that case, it isn't good enough to just check the package name from the
+    #fqdn of the function being called.
+    from os import sep
+    #TODO: we need to update the second or statement that pulls out
+    #acorn-specific files once we have it installed in an env. For now, we know
+    #that it is in the same directory as the decoration.py module.
+    return any([p in spath or sep not in spath for p in _decorated_packs])
+
+def _reduced_stack(package, istart=3, iend=4):
     """Returns the reduced function call stack that includes only relevant
     function calls (i.e., ignores any that are not part of the specified package
     or acorn.
@@ -168,10 +190,7 @@ def _reduced_stack(package):
         package (str): name of the package that the logged method belongs to.
     """
     import inspect
-    #TODO: we need to update the second or statement that pulls out
-    #acorn-specific files once we have it installed in an env.
-    return [i[3] for i in inspect.stack()
-            if package in i[1] or "decoration" in i[1]]
+    return [i[istart:iend] for i in inspect.stack() if _decorated_path(i[1])]
 
 _atdepth_new = False
 """bool: when True, a higher-level creation method has already determined that
@@ -184,7 +203,7 @@ this list and pop them once they return; that way, we know when to reset the
 global at-depth flag.
 """
 
-def creationlog(base, package, stackdepth=2):
+def creationlog(base, package, stackdepth=_def_stackdepth):
     """Decorator for wrapping the creation of class instances that are being logged
     by acorn.
 
@@ -206,7 +225,6 @@ def creationlog(base, package, stackdepth=2):
         #1-deep.
         if reduced <= stackdepth:
             args = _check_args(*argl, **argd)
-            ekey = _tracker_str(cls)
             entry = {
                 "method": "{}.__new__".format(cls.__name__),
                 "args": args,
@@ -230,22 +248,19 @@ def creationlog(base, package, stackdepth=2):
                 t = eval(referral.split('.')[0])
                 result = t.__new__(cls, *argl, **argd)
 
-        base.__init__(result, *argl, **argd)
+        cls.__init__(result, *argl, **argd)
 
-        #Unfortunately, we also need to override the new instance's methods so
-        #that they function correctly.
-        from inspect import ismethod
-        for n, o in vars(result).items():
-            if ismethod(o) and not isbound(o):
-                o.__call__ = getattr(cls, n)
-        
         if reduced <= stackdepth:
             if result is not None:
                 #We need to get these results a UUID that will be saved so that any
                 #instance methods applied to this object has a parent to refer to.
                 retid = _tracker_str(result)
                 entry["returns"] = retid
-            msg.info(entry, 2)
+                ekey = retid
+            else:
+                ekey = _tracker_str(cls)
+                
+            msg.info("{}: {}".format(ekey, entry), 2)
             record(ekey, entry)
             
         _cstack_new.pop()
@@ -266,13 +281,14 @@ this list and pop them once they return; that way, we know when to reset the
 global at-depth flag.
 """
 
-def callinglog(func, fqdn, package, stackdepth=2):
+def callinglog(func, fqdn, package, parent, stackdepth=_def_stackdepth):
     """Decorator for wrapping package library methods for intelligent
     logging.
     
     Args:
         fqdn (str): fully qualified name of the method being decorated.
         package (str): name of the package the `func` belongs to.
+        parent: class to which `func` belongs if it exists.
         stackdepth (int): if the calling stack is less than this depth, than
           include the entry in the log; otherwise ignore it.
     """
@@ -281,7 +297,10 @@ def callinglog(func, fqdn, package, stackdepth=2):
         if not _atdepth_call:
             rstack = _reduced_stack(package)
             reduced = len(rstack)
-            msg.info("stack ({}): {}".format(len(rstack), ', '.join(rstack)), 3)
+            if msg.will_print(3):
+                sstack = [' | '.join(map(str, r)) for r in rstack]
+                msg.info("stack ({}): {}".format(len(rstack),
+                                                 ', '.join(sstack)), 3)
         else:
             reduced = stackdepth + 10
             
@@ -292,7 +311,15 @@ def callinglog(func, fqdn, package, stackdepth=2):
             # exception, we should keep track of that. If this is an instance
             # method, we should get its UUID, if not, then we can just store the
             # entry under the full method name.
-            if isbound(func):
+            if (len(argl) > 0 and parent is not None):
+                bound = isinstance(argl[0], parent)
+            else:
+                bound = False
+                
+            if not bound:
+                #For now, we use the fqdn; later, if the result is not None, we
+                #will rather index this entry by the returned result, since we
+                #can also access the fqdn in the entry details.
                 ekey = fqdn
             else:
                 # It must have the first argument be the instance.
@@ -300,7 +327,7 @@ def callinglog(func, fqdn, package, stackdepth=2):
 
             name = fqdn.split('.')[-1]
             entry = {
-                "method": name,
+                "method": fqdn,
                 "args": args,
                 "start": time(),
                 "returns": None
@@ -317,14 +344,22 @@ def callinglog(func, fqdn, package, stackdepth=2):
             import sys
             if reduced <= stackdepth:
                 xcls, xerr = sys.exc_info()[0:2]
-                import traceback
-                traceback.print_tb(sys.exc_info()[2])
                 entry["error"] = "{}{}".format(xcls.__name__, xerr.args)
             result = None
+
+            if msg.will_print(-1):
+                import traceback
+                traceback.print_tb(sys.exc_info()[2])
+            else:
+                #Raise the exception further so that the user can figure out
+                #what they did wrong.
+                raise
 
         if reduced <= stackdepth:
             if result is not None:
                 retid = _tracker_str(result)
+                if result is not None and not bound:
+                    ekey = retid
                 entry["returns"] = retid
 
             if filter_name(name, package, "time"):
@@ -332,7 +367,7 @@ def callinglog(func, fqdn, package, stackdepth=2):
             if filter_name(name, package, "analyze"):
                 entry["analysis"] = analyze(fqdn, result)
 
-            msg.info(entry, 2)
+            msg.info("{}: {}".format(ekey, entry), 2)
             # Before we return the result, let's first save this call to the
             # database so we have a record of it.
             record(ekey, entry)
@@ -343,6 +378,11 @@ def callinglog(func, fqdn, package, stackdepth=2):
             
         return result
 
+    if hasattr(func, "im_self"):
+        setattr(wrapper, "im_self", func.im_self)
+    if hasattr(func, "im_class"):
+        setattr(wrapper, "im_class", func.im_class)
+    
     return wrapper
 
 _extended_objs = {}
@@ -363,8 +403,10 @@ def _create_extension(o, otype):
         otype (str): object types; one of ["classes", "functions", "methods",
           "modules"].
     """
+    import types
     xdict = {"__acornext__": o,
              "__doc__": o.__doc__}
+
     if otype == "classes":
         classname = o.__name__
         try:
@@ -376,15 +418,28 @@ def _create_extension(o, otype):
             #to be subclassed.
             _final_objs.append(id(o))
             return o
-    elif otype in ["functions"]:
+    elif (otype in ["functions"] or
+          (otype == "builtins" and (isinstance(o, types.BuiltinFunctionType) or
+                                    isinstance(o, types.BuiltinMethodType)))):
         def xwrapper(*args, **kwargs):
-            o(*args, **kwargs)
+            return o(*args, **kwargs)
         xwrapper.__dict__.update(xdict)
-        for a, v in o.__dict__.items():
+        #We want to get the members dictionary. For classes, using
+        #:meth:`inspect.getmembers` produces stack overflow errors. Instead, we
+        #reference the __dict__ directly. However, for built-in methods and
+        #functions, there is no __dict__, so we use `inspect.getmembers`.
+        for a, v in _get_members(o):
             #We want the new function to be identical to the old except that
             #it's __call__ method, which we overrode above.
             if a != "__call__":
-                setattr(xwrapper, a, v)
+                try:
+                    setattr(xwrapper, a, v)
+                except TypeError:
+                    #Some of the built-in types have __class__ attributes (for
+                    #example) that we can't set on a function type. This catches
+                    #that case and any others.
+                    pass
+                
         return xwrapper
 
 _set_failures = []
@@ -417,7 +472,7 @@ def _safe_setattr(obj, name, value):
         else:
             setattr(obj, name, value)
             return True
-    except TypeError:
+    except TypeError, AttributeError:
         _set_failures.append(okey)
         msg.warn("Failed '{}' attribute set on {}.".format(name, obj))
         return False
@@ -445,7 +500,7 @@ def _extend_object(parent, n, o, otype):
             setattr(o, "__acornext__", None)
         fqdn = _fqdn(o, otype)
         return o
-    except TypeError:
+    except (TypeError, AttributeError):
         #We have a built-in or extension type. 
         okey = id(o)
         if okey not in _extended_objs:
@@ -457,9 +512,22 @@ def _extend_object(parent, n, o, otype):
                 _extended_objs[okey] = xobj
             #else: we can't handle this kind of object; it just won't be
             #logged...
-        setattr(parent, n, _extended_objs[okey])
-        return _extended_objs[okey]
+        try:
+            setattr(parent, n, _extended_objs[okey])
+            return _extended_objs[okey]
+        except KeyError:
+            msg.warn("Object extension failed: {} ({}).".format(o, otype))
 
+def _get_members(o):
+    """Returns the likely members of the object by appealing to :func:`dir`
+    instead of using `__dict__` attribute, since that misses certain members.
+    """
+    result = []
+    for n in dir(o):
+        if hasattr(o, n):
+            result.append((n, getattr(o, n)))
+    return result
+            
 def _split_object(pobj, package):
     """Splits the specified object into its modules, classes, methods and
     functions so that it can be decorated more easily. For extension
@@ -476,28 +544,33 @@ def _split_object(pobj, package):
         "classes": [],
         "functions": [],
         "methods": [],
-        "modules": []
+        "modules": [],
+        "builtins": []
         }
 
     tests = {
         "classes": inspect.isclass,
         "functions": inspect.isfunction,
         "methods": inspect.ismethod,
-        "modules": inspect.ismodule
+        "modules": inspect.ismodule,
+        "builtins": inspect.isbuiltin
         }
     
     prepack = "{}.".format(package)
     pms = []
-    for n, o in vars(pobj).items():
+    for n, o in _get_members(pobj):
         omod = inspect.getmodule(o)
         if omod is not None and prepack in omod.__name__:
             pms.append((n, o))
-            
+
     for n, o in pms:
         for t, f in tests.items():
             if f(o):
                 xobj = _extend_object(pobj, n, o, t)
-                result[t].append((n, xobj))
+                if xobj is not None:
+                    result[t].append((n, xobj))
+                else:
+                    msg.warn("Couldn't extend {} ({}).".format(o, t), 3)
 
     return result
 
@@ -539,7 +612,7 @@ _stack_config = {}
 """dict: keys are package names, values are :type:`dict` where the keys are
 fqdns of package members and values are the configured stack depths.
 """
-def _get_stack_depth(package, fqdn, defdepth=2):
+def _get_stack_depth(package, fqdn, defdepth=_def_stackdepth):
     """Loads the stack depth settings from the config file for the specified
     package.
 
@@ -589,6 +662,8 @@ def _decorate_obj(parent, n, o, otype, recurse=True, redecorate=False):
           decorated recursively.
     """
     global _decor_count
+    from inspect import isclass
+    
     if not hasattr(o, "__acorn__") or redecorate:
         fqdn = _fqdn(o, otype)
         if fqdn is None:
@@ -603,8 +678,16 @@ def _decorate_obj(parent, n, o, otype, recurse=True, redecorate=False):
                 #calling on class types is handled by the construction decorator
                 #below.
                 _safe_setattr(o, "__acorn__", o.__call__)
-                setok = _safe_setattr(parent, n,
-                                      callinglog(o.__call__, fqdn, package, d))
+                if isclass(parent):
+                    clog = callinglog(o.__call__, fqdn, package, parent, d)
+                else:
+                    clog = callinglog(o.__call__, fqdn, package, None, d)
+
+                if hasattr(o, "im_self") and o.im_self is parent:
+                    setok = _safe_setattr(parent, n, staticmethod(clog))
+                else:
+                    setok = _safe_setattr(parent, n, clog)
+                    
                 msg.okay("Set calling logger on {}: {}.".format(n, fqdn), 3)
                 _decor_count[package][0] += 1
             else:
@@ -639,9 +722,13 @@ def decorate(package):
     enabled according to the configuration for the package.
     """
     global _decor_count
-    _decor_count[package.__name__] = [0, 0, 0]
+    npack = package.__name__
+    _decor_count[npack] = [0, 0, 0]
     packsplit = _split_object(package, package.__name__)
     for ot, ol in packsplit.items():
         for name, obj in ol:
             _decorate_obj(package, name, obj, ot)
-    msg.info("Decorated/Skipped/NA = {}".format(_decor_count))
+    global _decorated_packs
+    if npack not in _decorated_packs:
+        _decorated_packs.append(npack)
+    msg.info("{}: {} (Decor/Skip/NA)".format(npack, _decor_count[npack]))

@@ -1,10 +1,9 @@
 """Methods and classes for creating a JSON database from a tree of
 calls to methods with various objects passed as arguments.
 """
-#TODO: oids seem to be saving okay; we need to write them to the JSON database,
-#but only if they are relevant (i.e., some method calls later refer to them).
 from uuid import uuid4
 from acorn import msg
+
 oids = {}
 """dict: keys are python :meth:`id` values, values are the :class:`Instance`
 class instances from which JSON database can be constructed.
@@ -14,49 +13,73 @@ uuids = {}
 class instances (i.e., same values as :data:`oids`, but keyed by `uuid`.
 """
 dbs = {}
-"""dict: keys are tuple (project, task), values are the databases for the
-specified project and task.
+"""dict: keys are tuple (project, task), values are the :class:`TaskDB`
+instances for the specified project and task.
 """
 
-_project = "default"
+project = "default"
 """str: currently active *project* name under which all logging is being saved.
 """
-_task = "default"
+task = "default"
 """str: currently active *task* name under which all logging is being saved.
 """
-_writable = True
+writeable = True
 """bool: when True, calling :meth:`acorn.logging.database.record` will
 eventually result in an entry being saved to disk; otherwise, records are
 organized in memory, but the disk write is disabled.
 
 """
 
-def set_task(project, task):
+def set_task(project_, task_):
     """Sets the active project and task. All subsequent logging will be saved to
     the database with that project and task.
 
     Args:
-        project (str): active project name; a project can have multiple tasks.
-        task (str): active task name. Logging is separated at the project and task
+        project_ (str): active project name; a project can have multiple tasks.
+        task_ (str): active task name. Logging is separated at the project and task
           level.
     """
-    global _project, _task
-    _project = project
-    _task = task    
+    global project, task
+    project = project_
+    task = task_
+    msg.okay("Set project name to {}.{}".format(project, task), 2)
 
-def set_writable(writable):
+def set_writeable(writeable_):
     """Sets whether the database is being written to disk, or just organized in
     memory.
 
     Args: 
 
-        writable (bool): when True, calling :meth:`acorn.database.record` will
+        writeable_ (bool): when True, calling :meth:`acorn.database.record` will
           eventually result in an entry being saved to disk; otherwise, records are
           organized in memory, but the disk write is disabled.
     """
-    global _writable
-    _writable = writable
+    global writeable
+    writeable = writeable_
 
+def cleanup():
+    """Saves all the open databases to JSON so that the kernel can be shut down
+    without losing in-memory collections.
+    """
+    failed = {}
+    success = []
+    for dbname, db in dbs.items():
+        try:
+            #Force the database save, even if the time hasn't elapsed yet.
+            db.save(True)
+            success.append(dbname)
+        except:
+            import sys, traceback
+            xcls, xerr = sys.exc_info()[0:2]
+            failed[dbname] = traceback.format_tb(sys.exc_info()[2])
+
+    for sdb in success:
+        if writeable:
+            msg.okay("Project {0}.{1} saved successfully.".format(*sdb), 0)
+    for fdb, tb in failed.items():
+        msg.err("Project {1}.{2} save failed:\n{0}".format(tb, *fdb),
+                prefix=False)
+    
 def tracker(obj):
     """Returns the Instance of the specified object if it is one that
     we track by default.
@@ -71,10 +94,11 @@ def tracker(obj):
     import types as typ
     import numpy as anp
     global oids, uuids
-    untracked = (basestring, int, long, float, complex, tuple)
-    semitrack = (list, dict, set)
+    untracked = (basestring, int, long, float, complex)
+    semitrack = (list, dict, set, tuple)
     
-    if isinstance(obj, semitrack):
+    if (isinstance(obj, semitrack) and
+        all([isinstance(t, untracked) for t in obj])):
         if len(obj) > 0:
             semiform = "{0} len={1:d} min={2} max={3}"
             return semiform.format(type(obj), len(obj), min(obj), max(obj))
@@ -90,6 +114,9 @@ def tracker(obj):
     elif type(obj) is anp.ufunc:
         return "numpy.{}".format(obj.__name__)
     elif not isinstance(obj, untracked):
+        #For many of the numpy/scipy methods, the result is a tuple of numpy
+        #arrays. In that case, we should maintain the tuple structure for
+        #descriptive purposes, but still return a tracker.
         oid = id(obj)
         if oid in oids:
             result = oids[oid]
@@ -125,15 +152,16 @@ def record(ekey, entry):
     ekey (str): fqdn/uuid of the method/object to store the entry for.
     entry (dict): attributes and values gleaned from the execution.
     """
-    global _project, _task, dbs
+    global dbs
     # The task database is encapsulated in a class for easier serialization to
     # JSON. Get the DB for the (project, task) combination.
-    dbkey = (_project, _task)
+    dbkey = (project, task)
     if dbkey in dbs:
         taskdb = dbs[dbkey]
     else:
         taskdb = TaskDB()
         dbs[dbkey] = taskdb
+        msg.okay("Initialized JSON database for {}.{}".format(*dbkey), 2)
     
     taskdb.record(ekey, entry)
     # The task database save method makes sure that we only save as often as
@@ -159,11 +187,10 @@ class TaskDB(object):
             dbdir = _dbdir()
 
         from os import path
-        global _project, _task
-        if _project == "default" and _task == "default":
+        if project == "default" and task == "default":
             msg.warn("The project and task are using default values. "
                      "Use :meth:`acorn.set_task` to change them.")
-        self.dbpath = path.join(dbdir, "{}.{}.json".format(_project, _task))
+        self.dbpath = path.join(dbdir, "{}.{}.json".format(project, task))
         
         self.lastsave = None
         self.load()
@@ -176,7 +203,6 @@ class TaskDB(object):
             uuid (str): string value of :meth:`uuid.uuid4` value for the
               object.
         """
-        global uuids
         #We only need to try and describe an object once; if it is already in
         #our database, then just move along.
         if uuid not in self.uuids and uuid in uuids:
@@ -206,6 +232,9 @@ class TaskDB(object):
             #We use the constructor to determine if the format of the argument
             #is a valid UUID; if it isn't then we catch the error and keep
             #going.
+            if not isinstance(larg, str):
+                continue
+            
             try:
                 uid = UUID(larg)
                 self._log_uuid(uid)
@@ -255,17 +284,20 @@ class TaskDB(object):
                 self.entities = jdb["entities"]
                 self.uuids = jdb["uuids"]
             
-    def save(self):
-        """Serializes the database file to disk."""
-        global _writable
-        if not _writable:
-            return       
+    def save(self, force=False):
+        """Serializes the database file to disk.
+
+        Args:
+            force (bool): when True, the elapsed time since last save is ignored
+                and the database is saved anyway (subject to global
+                :data:`writeable` setting).
+        """
+        from time import time
 
         # Since the DBs can get rather large, we don't want to save them every
         # single time a method is called. Instead, we only save them at the
         # frequency specified in the global settings file.
         from datetime import datetime
-        from time import time
         savefreq = self._get_option("savefreq", 2, int)
         
         if self.lastsave is not None:
@@ -275,7 +307,14 @@ class TaskDB(object):
         else:
             elapsed = savefreq + 1
 
-        if elapsed > savefreq:
+        if elapsed > savefreq or force:
+            if not writeable:
+                #We still overwrite the lastsave value so that this message doesn't
+                #keep getting output for every :meth:`record` call.
+                self.lastsave = time()
+                msg.std("Skipping database write to disk by setting.", 2)
+                return
+
             import json
             try:
                 jdb = {"entities": self.entities,
@@ -318,5 +357,11 @@ class Instance(object):
         #already have a paper trail that shows exactly how it was done; but for
         #these, we have to rely on human-specified descriptions.
         from acorn.logging.descriptors import describe
-        return describe(self.obj)
-        
+        semitrack = (list, dict, set, tuple)
+        if isinstance(self.obj, semitrack):
+            if isinstance(self.obj, (list, tuple, set)):
+                return [describe(o) for o in self.obj]
+            elif isinstance(self.obj, dict):
+                return {k: describe(v) for k, v in self.obj.items()}
+        else:
+            return describe(self.obj)

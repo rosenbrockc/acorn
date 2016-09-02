@@ -1,0 +1,9 @@
+{"pandas.core.frame.DataFrame": {
+  "instance": {"transform": ["self.head",
+ 			     "self.describe",
+ 			     "self.get_values"],
+ 	       "slice": ["mean:1", "std:2"]},
+  "columns.values": {"rename": "columns"},
+  "ndim": {}
+}}
+

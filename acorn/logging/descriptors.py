@@ -107,6 +107,20 @@ def _instance_transform(fqdn, o, *args, **kwargs):
     """
     return _package_transform(o, fqdn, start=0, *args, **kwargs)
 
+def _array_convert(a):
+    """Converts the specified value to a list if it is a :class:`numpy.ndarray`;
+    otherwise it is just returned as is.
+    """
+    from numpy import ndarray
+    if isinstance(a, ndarray):
+        larr = a.tolist()
+        if len(larr) == 1:
+            return larr[0]
+        else:
+            return larr
+    else:
+        return a
+
 def json_describe(o, fqdn, descriptor=None):
     """Describes the specified object using the directives in the JSON
     `descriptor`, if available.
@@ -123,7 +137,23 @@ def json_describe(o, fqdn, descriptor=None):
     else:
         result = {"fqdn": fqdn}
         for attr, desc in descriptor.items():
-            value = getattr(o, attr, "")
+            if attr == "instance":
+                #For instance methods, we repeatedly call instance methods on
+                #`value`, assuming that the methods belong to `value`.
+                value = o
+            else:
+                if '.' in attr:
+                    #We get the chain of attribute values.
+                    value = o
+                    for cattr in attr.split('.'):
+                        if hasattr(value, cattr):
+                            value = getattr(value, cattr, "")
+                        else:
+                            break
+                else:
+                    #There is just a one-level getattr.    
+                    value = getattr(o, attr, "")
+                
             if "transform" in desc:
                 for transform in desc["transform"]:
                     if "numpy" == transform[0:len("numpy")]:
@@ -132,10 +162,11 @@ def json_describe(o, fqdn, descriptor=None):
                         value = _scipy_transform(transform, value)
                     elif "math" == transform[0:len("math")]:
                         value = _math_transform(transform, value)
-                    elif (transform == "self"):
+                    elif "self" in transform:
                         args = desc["args"] if "args" in desc else []
-                        kwargs = desc["kwargs"] if "kwargs" in desc else {}
-                        value = _instance_transform(attr, o, *args, **kwargs)
+                        kwds = desc["kwargs"] if "kwargs" in desc else {}
+                        method = transform[len("self."):]
+                        value = _instance_transform(method, value, *args,**kwds)
                         
             if "slice" in desc:
                 for si, sl in enumerate(desc["slice"]):
@@ -147,12 +178,12 @@ def json_describe(o, fqdn, descriptor=None):
                     slvalue = value
                     for i in map(int, slice.split(',')):
                         slvalue = slvalue[i]
-
-                    result[name] = slvalue
+                        
+                    result[name] = _array_convert(slvalue)
             else:
                 if "rename" in desc:
-                    result[desc["rename"]] = value
+                    result[desc["rename"]] = _array_convert(value)
                 else:
-                    result[attr] = value
+                    result[attr] = _array_convert(value)
                 
     return result
