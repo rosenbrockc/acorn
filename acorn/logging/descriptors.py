@@ -35,6 +35,18 @@ def describe(o):
     else:
         return json_describe(o, fqdn)
 
+def _obj_getattr(obj, fqdn, start=1):
+    """Returns the attribute specified by the fqdn list from obj.
+    """
+    node = obj
+    for chain in fqdn.split('.')[start:]:
+        if hasattr(node, chain):
+            node = getattr(node, chain)
+        else:
+            node = None
+            break
+    return node
+    
 def _package_transform(package, fqdn, start=1, *args, **kwargs):
     """Applies the specified package transform with `fqdn` to the package.
 
@@ -49,14 +61,8 @@ def _package_transform(package, fqdn, start=1, *args, **kwargs):
     #Our only difficulty here is that package names can be chained. We ignore
     #the first item since that was already checked for us by the calling
     #method.
-    node = package
-    for chain in fqdn.split('.')[start:]:
-        if hasattr(node, chain):
-            node = getattr(node, chain)
-        else:
-            node = None
-            break
-
+    node = _obj_getattr(package, fqdn, start)
+    
     #By the time this loop is finished, we should have a function to apply if
     #the developer setting up the config did a good job.
     if node is not None and hasattr(node, "__call__"):

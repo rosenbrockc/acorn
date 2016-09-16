@@ -6,3 +6,5 @@ from acorn.logging.database import set_task, set_writeable
 import atexit
 from acorn.logging.database import cleanup
 atexit.register(cleanup)
+
+import acorn.subclass

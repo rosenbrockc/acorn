@@ -29,6 +29,21 @@ eventually result in an entry being saved to disk; otherwise, records are
 organized in memory, but the disk write is disabled.
 
 """
+dbdir = None
+"""str: full path to the directory where the databases are being stored. If this
+is overwritten programatically, then the global settings for `acorn` will *not*
+be checked.
+"""
+def set_dbdir(dbdir_):
+    """Sets the path to the directory where the JSON files should be
+    stored. Calling this method side-steps the configuration settings in the
+    `acorn.cfg` global config file.
+
+    Args:
+        dbdir_ (str): path to the dbdir; can be relative.
+    """
+    global dbdir
+    dbdir = dbdir_
 
 def set_task(project_, task_):
     """Sets the active project and task. All subsequent logging will be saved to
@@ -131,18 +146,27 @@ def tracker(obj):
 def _dbdir():
     """Returns the path to the directory where acorn DBs are stored.
     """
-    from acorn.config import settings
-    config = settings("acorn")
-    if (config.has_section("database") and
-        config.has_option("database", "folder")):
-        from os import mkdir, path
-        dbdir = path.abspath(path.expanduser(config.get("database", "folder")))
-        if not path.isdir(dbdir):
-            mkdir(dbdir)
-        return dbdir
-    else:
-        raise ValueError("The folder to save DBs in must be configured"
-                         "  in 'acorn.cfg'")
+    global dbdir
+    from os import mkdir, path
+    
+    if dbdir is None:
+        from acorn.config import settings
+        config = settings("acorn")
+        if (config.has_section("database") and
+            config.has_option("database", "folder")):
+            dbdir = config.get("database", "folder")
+        else:
+            raise ValueError("The folder to save DBs in must be configured"
+                             "  in 'acorn.cfg'")
+
+    if not path.isabs(dbdir[0]):
+        #We want absolute paths to make it easier to port this to other OS.
+        dbdir = path.abspath(path.expanduser(dbdir))
+        
+    if not path.isdir(dbdir): # pragma: no cover
+        mkdir(dbdir)
+        
+    return dbdir
 
 def record(ekey, entry):
     """Records the specified entry to the key-value store under the specified
@@ -245,7 +269,7 @@ class TaskDB(object):
 
         #We also need to handle the keyword arguments; these are keyed by name.
         for key, karg in entry["args"].items():
-            if key == "__":
+            if key == "__" or not isinstance(karg, str):
                 #Skip the positional arguments since we already handled them.
                 continue
             try:
