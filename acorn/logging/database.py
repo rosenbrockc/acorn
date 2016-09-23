@@ -120,10 +120,20 @@ def tracker(obj):
         else:
             semiform = "{0} len={1:d}"
             return semiform.format(type(obj), len(obj))
+    elif isinstance(obj, semitrack):
+        #We have to run the tracker on each of the elements in the list, set,
+        #dict or tuple; this is necessary so that we can keep track of
+        #subsequent calls made with unpacked parts of the tuple.
+        return [tracker(o) for o in obj]
     elif type(obj) is type:
         return obj.__name__
     elif type(obj) is typ.LambdaType:
-        return "lambda ({})".format(', '.join(obj.func_code.co_varnames))
+        if hasattr(obj, "__fqdn__"):
+            #We need to get the actual fqdn of the object *before* it was
+            #decorated.
+            return obj.__fqdn__
+        else:
+            return "lambda ({})".format(', '.join(obj.func_code.co_varnames))
     elif type(obj) in [typ.FunctionType, typ.MethodType]:
         return obj.__name__
     elif type(obj) is anp.ufunc:

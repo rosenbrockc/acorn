@@ -14,8 +14,12 @@ def describe(o):
     #First, we need to determine the fqdn, so that we can lookup the format for
     #this object in the config file for the package.
     from inspect import getmodule
-    ocls = o.__class__
-    fqdn = "{}.{}".format(getmodule(ocls).__name__, ocls.__name__)
+    from acorn.logging.decoration import _fqdn
+    fqdn = _fqdn(o)
+    if fqdn is None:
+        #This should not have happened; if the FQDN couldn't be determined, then
+        #we should have never logged it.
+        return json_describe(o, str(type(o)))
     package = fqdn.split('.')[0]
 
     global _package_desc

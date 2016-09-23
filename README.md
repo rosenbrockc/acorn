@@ -33,3 +33,7 @@ server backend required outside of the web service requests).
 
 If this sparks your interest, please message us. The project is still in early
 development, so we can't say more up front.
+
+# Special Notes
+
+The `matplotlib` module is used frequently, but not in the typical way. Most of the methods and objects are used internally unless a plot is being tweaked for some special reason. The `matplotlib.cfg` file prunes the number of objects that get decorate very aggressively so that only the common calls are logged. You can adjust your own local config file if you spend a lot of time actually coding `matplotlib` internals.

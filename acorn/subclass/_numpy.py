@@ -10,8 +10,11 @@ class ndarray(np.ndarray):
 
     """
     def __new__(cls, input_array):
-        from acorn.logging.decoration import set_decorating
-        set_decorating(True)
+        from acorn.logging.decoration import set_decorating, decorating
+        odecor = decorating
+        if not decorating:
+            set_decorating(True)
+            
         #Call the original, undecorated version of asarray.
         if isinstance(input_array, np.ndarray):
             if hasattr(np.ndarray.view, "__acorn__"):
@@ -23,7 +26,10 @@ class ndarray(np.ndarray):
                 obj = np.asarray.__acorn__(input_array).view(cls)
             else:
                 obj = np.asarray(input_array).view(cls)
-        set_decorating(False)
+
+        #We need to make sure that we don't set decor to be False when it was
+        #True previously; so we just set it to what it was.
+        set_decorating(odecor)
         
         obj.__acorn__ = np.ndarray
         obj.__doc__ = np.ndarray.__doc__
@@ -58,7 +64,7 @@ class ndarray(np.ndarray):
             from acorn.logging.decoration import (rt_decorate_pre,
                                                   rt_decorate_post,
                                                   _fqdn)
-            fqdn = _fqdn(context[0], "unknown", False)
+            fqdn = _fqdn(context[0], False)
             entry, bound, ekey = rt_decorate_pre(fqdn, None, 4, *context[1])
 
         # Because we had to subclass numpy.ndarray, the original methods get

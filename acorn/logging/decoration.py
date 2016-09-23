@@ -73,7 +73,7 @@ name_filters = {}
 _decorated_packs = []
 """list: of package names that have had :func:`decorate` called on them.
 """
-_pack_paths = ["<ipython-input"]
+_pack_paths = ["<ipython-input", "matplotlib", "numpy", "scipy"]
 """list: of package name paths (including the path separator) so that stack
 entries can be filtered more quickly.
 """
@@ -138,7 +138,7 @@ def _get_name_filter(package, context="decorate", reparse=False):
         name_filters[pkey] = None
     return name_filters[pkey]
 
-def filter_name(funcname, package, context="decorate"):
+def filter_name(funcname, package, context="decorate", explicit=False):
     """Returns True if the specified function should be filtered (i.e., included
     or excluded for use in the specified context.)
 
@@ -147,6 +147,8 @@ def filter_name(funcname, package, context="decorate"):
         package (str): name of the package that the method belongs to.
         context (str): one of ['decorate', 'time', 'analyze']; specifies which
           section of the configuration settings to check.
+        explicit (bool): when True, if a name is not explicitly specified for
+          inclusion, then the function returns False.
 
     Returns:
     bool: specifying whether the function should be decorated, timed or
@@ -158,9 +160,22 @@ def filter_name(funcname, package, context="decorate"):
         # everything.
         return True
 
-    # First we handle the `fnmatch` filters. If something is told to be ignored,
-    # that takes precedence over the inclusion filters.
-    matched = True
+    # First we handle the `fnmatch` filters. If something is explicitly included
+    # that takes precedence over the ignore filters.
+    matched = None
+    if packfilter["filters"] is not None:
+        from fnmatch import fnmatch
+        for pattern in packfilter["filters"]:
+            if fnmatch(funcname, pattern):
+                matched = True
+                return matched
+
+    if packfilter["rfilters"] is not None:
+        for pattern in packfilter["rfilters"]:
+            if pattern.match(funcname):
+                matched = True
+                return matched
+
     if packfilter["ignores"] is not None:
         from fnmatch import fnmatch
         for pattern in packfilter["ignores"]:
@@ -168,25 +183,15 @@ def filter_name(funcname, package, context="decorate"):
                 matched = False
                 return matched
 
-    if not matched and packfilter["rignores"] is not None:
+    if packfilter["rignores"] is not None:
         for pattern in packfilter["rignores"]:
             if pattern.match(funcname):
                 matched = False
                 return matched
-                
-    if packfilter["filters"] is not None:
-        from fnmatch import fnmatch
-        for pattern in packfilter["filters"]:
-            if fnmatch(funcname, pattern):
-                matched = True
-                break
 
-    if not matched and packfilter["rfilters"] is not None:
-        for pattern in packfilter["rfilters"]:
-            if pattern.match(funcname):
-                matched = True
-                break
-
+    if matched is None:
+        matched = not explicit
+            
     return matched
 
 def _tracker_str(item):
@@ -200,6 +205,15 @@ def _tracker_str(item):
     if instance is not None:
         if isinstance(instance, str):
             return instance
+        elif isinstance(instance, list):
+            #We return the uuid for each item in the list.
+            result = []
+            for i in instance:
+                if hasattr(i, "uuid"):
+                    result.append(i.uuid)
+                else:
+                    result.append(i)
+            return tuple(result)
         else:
             return instance.uuid
     else:
@@ -273,7 +287,7 @@ def _pre_create(cls, atdepth, stackdepth, *argl, **argd):
             "method": "{}.__new__".format(cls.__name__),
             "args": args,
             "start": time(),
-            "returns": None
+            "returns": None,
             }
     else:
         atdepth = True
@@ -333,7 +347,11 @@ def creationlog(base, package, stackdepth=_def_stackdepth):
                 result = None
 
         if result is not None and hasattr(cls, "__init__"):
-            cls.__init__(result, *argl, **argd)
+            try:
+                cls.__init__(result, *argl, **argd)
+            except:
+                print(cls, argl, argd)
+                raise
         else:
             msg.err("Object creation failed for {}.".format(base.__name__))
 
@@ -368,7 +386,7 @@ def _pre_call(atdepth, parent, fqdn, stackdepth, *argl, **argd):
             code = rstack[-1][1]
         else:
             code = ""
-                
+
         reduced = len(rstack)
         if msg.will_print(3):
             sstack = [' | '.join(map(str, r)) for r in rstack]
@@ -380,7 +398,6 @@ def _pre_call(atdepth, parent, fqdn, stackdepth, *argl, **argd):
     bound = False
     if reduced <= stackdepth:
         args = _check_args(*argl, **argd)
-
         # At this point, we should start the entry. If the method raises an
         # exception, we should keep track of that. If this is an instance
         # method, we should get its UUID, if not, then we can just store the
@@ -402,7 +419,7 @@ def _pre_call(atdepth, parent, fqdn, stackdepth, *argl, **argd):
             "args": args,
             "start": time(),
             "returns": None,
-            "code": code
+            "code": code,
         }
     else:
         entry = None
@@ -501,12 +518,20 @@ def callinglog(func, fqdn, package, parent, stackdepth=_def_stackdepth):
         entry, bound, ekey = rt_decorate_pre(fqdn, parent, stackdepth,
                                              *argl, **argd)
         
-        # We time the actual method call. For ML fits, this is important
-        # because it adds perspective when choosing an optimal model.
+        # if hasattr(func, "__acorn__") and func.__acorn__ is not None:
+        #     #We call the original function from the pristine package.
+        #     if (hasattr(func.__acorn__, "__acornext__") and
+        #         func.__acorn__.__acornext__ is not None):
+        #         result = func.__acorn__.__acornext__(*argl, **argd)
+        #     else:
+        #         result = func.__acorn__(*argl, **argd)
+        # else:
         result = func(*argl, **argd)
         if not decorating:
             if fqdn in _callwraps:
                 result = _callwraps[fqdn](result)
+                if fqdn=="numpy.core.fromnumeric.ravel":
+                    print(result, len(argl), func)
 
         rt_decorate_post(fqdn, package, result, entry, bound, ekey)
         return result
@@ -620,7 +645,10 @@ def _safe_setattr(obj, name, value):
             setattr(obj.__func__, name, value)
             return True
         else:
-            setattr(obj, name, value)
+            if isinstance(obj, dict):
+                obj[name] = value
+            else:
+                setattr(obj, name, value)
             return True
     except TypeError, AttributeError:
         _set_failures.append(okey)
@@ -650,7 +678,7 @@ def _extend_object(parent, n, o, otype, fqdn):
             setattr(o.__func__, "__acornext__", None)
         else:
             setattr(o, "__acornext__", None)
-        fqdn = _fqdn(o, otype)
+        fqdn = _fqdn(o)
         return o
     except (TypeError, AttributeError):
         #We have a built-in or extension type. 
@@ -659,7 +687,7 @@ def _extend_object(parent, n, o, otype, fqdn):
             #We need to generate an extension for this object and store it
             #in the extensions dict.
             xobj = _create_extension(o, otype, fqdn)
-            fqdn = _fqdn(xobj, otype)
+            fqdn = _fqdn(xobj)
             if xobj is not None:
                 _extended_objs[okey] = xobj
             #else: we can't handle this kind of object; it just won't be
@@ -737,22 +765,40 @@ def _split_object(pobj, package):
                 elif hasattr(o, "__class__"):
                     omod = _safe_getmodule(o.__class__)
 
-        if (omod is not None and (prepack in omod.__name__ or
-                                  omod.__name__ == package)):
-            pms.append((n, o))                    
+        #Some packages define special types with __class__ = type. These are
+        #indistinguishable from the built-in types like `float` or `str`. So we
+        #force the developers to configure these manually.
+        packok = False
+        confok = False
+        if omod is not None:
+            packok = (prepack in omod.__name__ or omod.__name__ == package)
+            if not packok and hasattr(o, "__class__") and o.__class__ is type:
+                fqdn_ = _fqdn(o, False)
+                incl = filter_name(fqdn_, package, explicit=True)
+                if incl:
+                    filesrc = inspect.getabsfile(pobj)
+                    confok = "/{}/".format(package) in filesrc
+                
+        if packok or confok:
+            pms.append((n, o, confok))                    
             
     global _decor_count
-    def oappend(n, o, t, result):
+    def oappend(n, o, t, result, confok):
         """Appends the specified object to `results` if it can be extended.
+
+        Args:
+            confok (bool): when True, the code has already determined previously
+              that this object should be decorated no matter what (the user said
+              so). In that case, we bypass the regular name checks.
         """
-        fqdn = _fqdn(o, t, False)
+        fqdn = _fqdn(o, False)
         if fqdn is None:
             #The object was probably of type unknown and doesn't have a __name__
             #attribute, so we just skip it.
             return
         
         package = fqdn.split('.')[0]
-        if filter_name(n, package) and filter_name(fqdn, package):
+        if confok or (filter_name(n, package) and filter_name(fqdn, package)):
             xobj = _extend_object(pobj, n, o, t, fqdn)
             if xobj is not None:
                 result[t].append((n, xobj))
@@ -763,19 +809,19 @@ def _split_object(pobj, package):
             msg.info(skipmsg.format(n, fqdn), 4)
             _decor_count[package][1] += 1
         
-    for n, o in pms:
+    for n, o, confok in pms:
         for t, f in tests.items():
             if f(o):
-                oappend(n, o, t, result)
+                oappend(n, o, t, result, confok)
                 break
         else:
             if hasattr(o, "__call__"):
-                oappend(n, o, "unknowns", result)
+                oappend(n, o, "unknowns", result, confok)
 
     _split_objects.append(pobj)
     return result
 
-def _fqdn(o, otype, oset=True):
+def _fqdn(o, oset=True):
     """Returns the fully qualified name of the object.
 
     Args:
@@ -813,16 +859,6 @@ def _fqdn(o, otype, oset=True):
                                        otarget.__name__)
         else:
             result = "{}.{}".format(omod.__name__, otarget.__name__)
-
-        # if otype in ["classes", "functions"]:
-        #     result = "{}.{}".format(o.__module__, o.__name__)
-        # elif otype == "methods":
-        #     if isbound(o):
-        #         result = "{}.{}".format(_fqdn(o.im_self, "classes"), o.__name__)
-        #     else:
-        #         result = "{}.{}".format(_fqdn(o.im_class, "classes"), o.__name__)
-        # elif otype == "modules":
-        #     result = o.__name__
 
         if oset:
             _safe_setattr(o, "__fqdn__", result)
@@ -866,11 +902,11 @@ def _get_stack_depth(package, fqdn, defdepth=_def_stackdepth):
     else:
         return defdepth
 
-_decor_count = {"__builtin__": [0,0,0]}
+_decor_count = {"__builtin__": [0,0,0], "__main__": [0,0,0]}
 """dict: keys are package names, values are list [decorated, skipped, na] that
 keeps statistics on how many of the package objects actually get decorated.
 """
-_decorated_o = {"__builtin__": {}}
+_decorated_o = {"__builtin__": {}, "__main__": {}}
 """dict: keys are package names; values are dicts with keys :func:`id` values
 for all the objects that have been decorated already. Introduced so that classes
 which inherit from already decorated classes won't be skipped for already having
@@ -892,14 +928,14 @@ def _decorate_obj(parent, n, o, otype, recurse=True, redecorate=False):
           decorated recursively.
     """
     global _decor_count, _decorated_o
-    from inspect import isclass
-    fqdn = _fqdn(o, otype)
+    from inspect import isclass, isfunction
+    fqdn = _fqdn(o)
     if fqdn is None:
         #This object didn't have a name, which means we can't extend it or
         #track it anyway.
         return
     package = fqdn.split('.')[0]
-
+    
     if (package in _decorated_o and
         (id(o) not in _decorated_o[package] or redecorate)):
         d = _get_stack_depth(package, fqdn)
@@ -916,9 +952,10 @@ def _decorate_obj(parent, n, o, otype, recurse=True, redecorate=False):
             _safe_setattr(clog, "__acornext__", o)
             setattr(clog, "__getattribute__", _safe_getattr(clog))
             _update_attrs(clog, o)
-
+            
             if ((hasattr(o, "im_self") and o.im_self is parent)):
-                clog = staticmethod(clog)                
+                clog = staticmethod(clog)
+
             setok = _safe_setattr(parent, n, clog)
 
             if setok:
@@ -1029,7 +1066,12 @@ def decorate(package):
     global decorating
     if "acorn" not in _decorated_packs:
         _decorated_packs.append("acorn")
-        _pack_paths.append("acorn{}".format(sep))
+        packpath = "acorn{}".format(sep)
+        if packpath not in _pack_paths:
+            #We initialize _pack_paths to include common packages that people
+            #use without decorating. Otherwise those slow *way* down and the
+            #notebook becomes unusable.
+            _pack_paths.append(packpath)
         
     npack = package.__name__
     #Since scipy includes numpy (for example), we don't want to run the numpy

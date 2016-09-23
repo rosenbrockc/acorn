@@ -29,14 +29,14 @@ def _read_single(parser, filepath):
     if path.isfile(filepath):
         parser.readfp(open(filepath))
 
-def settings(package):
+def settings(package, reload_=False):
     """Returns the config settings for the specified package.
 
     Args:
         package (str): name of the python package to get settings for.
     """
     global packages
-    if package not in packages:
+    if package not in packages or reload_:
         from os import path
         try:
             from configparser import ConfigParser
