@@ -1,0 +1,7 @@
+argparse
+termcolor
+numpy
+matplotlib
+scipy
+pandas
+scikit-learn

@@ -11,6 +11,8 @@ predictions a day. At the end of the day, it is hard to remember which set of
 parameters produced that one fit, which (of course) you didn't realize was
 important at the time.
 
+The library is [well documented](https://rosenbrockc.github.io/acorn/).
+
 ## Basic Flow
 
 1. Depending on the logging level, every time a method/function is called
@@ -24,10 +26,9 @@ sets of objects, separated by project, task, date and specific object instances.
 We recommend that the JSON database directory be configured on a Dropbox folder
 (later we will support Google Drive, etc.). The HTML notebook can be authorized
 (per session) to have access to Dropbox so that the JSON databases can be
-accessed from anywhere (and any device). There will also be a local `django`
-project that simulates the Dropbox REST API for local projects working off local
-databases. Otherwise, the HTML and javascript is completely standalone (i.e., no
-server backend required outside of the web service requests).
+accessed from anywhere (and any device). Thi HTML and javascript is completely
+standalone (i.e., no server backend required outside of the web service
+requests).
 
 ## Contribution
 

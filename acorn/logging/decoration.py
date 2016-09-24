@@ -67,7 +67,7 @@ def _update_attrs(nobj, oobj, exceptions=None, acornext=False):
     return success
 
 name_filters = {}
-"""dict: keys are package names; values are dicts of lists: 1)
+"""dict: keys are package names; values are dicts of lists. 1)
 :meth:`~fnmatch.fnmatch` patterns; 2) :meth:`re.match` patterns.
 """
 _decorated_packs = []
@@ -151,8 +151,8 @@ def filter_name(funcname, package, context="decorate", explicit=False):
           inclusion, then the function returns False.
 
     Returns:
-    bool: specifying whether the function should be decorated, timed or
-      analyzed.
+        bool: specifying whether the function should be decorated, timed or
+          analyzed.
     """
     packfilter = _get_name_filter(package, context)
     if packfilter is None:
@@ -518,14 +518,6 @@ def callinglog(func, fqdn, package, parent, stackdepth=_def_stackdepth):
         entry, bound, ekey = rt_decorate_pre(fqdn, parent, stackdepth,
                                              *argl, **argd)
         
-        # if hasattr(func, "__acorn__") and func.__acorn__ is not None:
-        #     #We call the original function from the pristine package.
-        #     if (hasattr(func.__acorn__, "__acornext__") and
-        #         func.__acorn__.__acornext__ is not None):
-        #         result = func.__acorn__.__acornext__(*argl, **argd)
-        #     else:
-        #         result = func.__acorn__(*argl, **argd)
-        # else:
         result = func(*argl, **argd)
         if not decorating:
             if fqdn in _callwraps:
@@ -914,7 +906,7 @@ __acorn__ on them.
 
 """
     
-def _decorate_obj(parent, n, o, otype, recurse=True, redecorate=False):
+def decorate_obj(parent, n, o, otype, recurse=True, redecorate=False):
     """Adds the decoration for automated logging to the specified object, if it
     hasn't already been done.
 
@@ -987,7 +979,7 @@ def _decorate_obj(parent, n, o, otype, recurse=True, redecorate=False):
             splits = _split_object(o, package)
             for ot, ol in splits.items():
                 for nobj, obj in ol:
-                    _decorate_obj(o, nobj, obj, ot)
+                    decorate_obj(o, nobj, obj, ot)
 
         if setok:
             _decorated_o[package][id(o)] = decor
@@ -1087,7 +1079,7 @@ def decorate(package):
         decorating = True
         for ot, ol in packsplit.items():
             for name, obj in ol:
-                _decorate_obj(package, name, obj, ot)
+                decorate_obj(package, name, obj, ot)
 
         #Now that we have actually decorated all the objects, we can load the
         #call wraps to point to the new decorated objects.

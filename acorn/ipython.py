@@ -84,9 +84,9 @@ class InteractiveDecorator(object):
         typemap = {"function": "functions",
                    "classobj": "classes",
                    "staticmethod": "methods"}
-        from acorn.logging.decoration import _decorate_obj
+        from acorn.logging.decoration import decorate_obj
         try:
-            _decorate_obj(self.shell.user_ns, n, o, typemap[atype])
+            decorate_obj(self.shell.user_ns, n, o, typemap[atype])
             msg.okay("Auto-decorated {}: {}.".format(n, o))
         except:
             msg.err("Error auto-decorating {}: {}.".format(n, o))
@@ -101,5 +101,12 @@ class InteractiveDecorator(object):
                 self._decorate(atype, n, o)
 
 def load_ipython_extension(ip):
+    """Loads the interacting decorator that ships with `acorn` into the ipython
+    interactive shell.
+
+    Args:
+        ip (IPython.core.interactiveshell.InteractiveShell): ipython shell instance
+          for interacting with the shell variables.
+    """
     decor = InteractiveDecorator(ip)
     ip.events.register('post_run_cell', decor.post_run_cell)
