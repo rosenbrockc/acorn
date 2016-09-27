@@ -1,0 +1,5 @@
+{"pandas.core.frame.DataFrame": {
+    "columns.values": {"rename": "columns"},
+    "ndim": {},
+    "shape": {}
+}}

@@ -6,5 +6,6 @@ def analyze(fqdn, result):
 
     Args:
         fqdn (str): full-qualified name of the method that was called.
+        result: result of calling the method with `fqdn`.
     """
     pass
