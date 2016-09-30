@@ -83,7 +83,7 @@ def cleanup():
             #Force the database save, even if the time hasn't elapsed yet.
             db.save(True)
             success.append(dbname)
-        except:
+        except: # pragma: no cover
             import sys, traceback
             xcls, xerr = sys.exc_info()[0:2]
             failed[dbname] = traceback.format_tb(sys.exc_info()[2])
@@ -91,11 +91,11 @@ def cleanup():
     for sdb in success:
         if writeable:
             msg.okay("Project {0}.{1} saved successfully.".format(*sdb), 0)
-    for fdb, tb in failed.items():
+    for fdb, tb in failed.items(): # pragma: no cover
         msg.err("Project {1}.{2} save failed:\n{0}".format(tb, *fdb),
                 prefix=False)
     
-def tracker(argobj):
+def tracker(obj):
     """Returns the Instance of the specified object if it is one that
     we track by default.
 
@@ -114,19 +114,9 @@ def tracker(argobj):
     untracked = (six.string_types, six.integer_types, float,
                  complex, six.text_type)
 
-    if six.PY2:
-        semitrack = (list, dict, set, tuple)
-    else:
-        semitrack = (list, dict, set, tuple, range, filter, map)
-
-    #If we wrapped a function that is being passed as an argument, we don't want
-    #to interfere with the actual intent of the user, to log the *original*
-    #function being passed as an argument.
-    if (not isclass(type(argobj)) and hasattr(argobj, "__acornext__")
-        and argobj.__acornext__ is not None):
-        obj = argobj.__acornext__
-    else:
-        obj = argobj
+    semitrack = (list, dict, set, tuple)
+    if six.PY3: # pragma: no cover
+        semitrack = semitrack + (range, filter, map)
         
     if (isinstance(obj, semitrack) and
         all([isinstance(t, untracked) for t in obj])):
@@ -153,10 +143,10 @@ def tracker(argobj):
         else:
             if six.PY2:
                 _code = obj.func_code
-            else:
+            else: # pragma: no cover
                 _code = obj.__code__
             return "lambda ({})".format(', '.join(_code.co_varnames))
-    elif type(obj) in [typ.FunctionType, typ.MethodType]:
+    elif type(obj) in [typ.FunctionType, typ.MethodType]: # pragma: no cover
         return obj.__name__
     elif type(obj) is anp.ufunc:
         return "numpy.{}".format(obj.__name__)
@@ -187,7 +177,7 @@ def _dbdir():
         if (config.has_section("database") and
             config.has_option("database", "folder")):
             dbdir = config.get("database", "folder")
-        else:
+        else: # pragma: no cover
             raise ValueError("The folder to save DBs in must be configured"
                              "  in 'acorn.cfg'")
 
@@ -268,7 +258,7 @@ class TaskDB(object):
             dbdir = _dbdir()
 
         from os import path
-        if project == "default" and task == "default":
+        if project == "default" and task == "default": # pragma: no cover
             msg.warn("The project and task are using default values. "
                      "Use :meth:`acorn.set_task` to change them.")
         self.dbpath = path.join(dbdir, "{}.{}.json".format(project, task))
@@ -313,7 +303,7 @@ class TaskDB(object):
             #because it wastes space. In those cases, the ekey is a UUID.
             try:
                 uid = str(UUID(ekey))
-            except ValueError:
+            except ValueError: # pragma: no cover
                 pass
 
         if uid is not None and isinstance(uid, str):
@@ -345,7 +335,8 @@ class TaskDB(object):
             except ValueError:
                 pass            
 
-    def _get_option(self, option, default=None, cast=None):
+    @staticmethod
+    def get_option(option, default=None, cast=None):
         """Returns the option value for the specified acorn database option.
         """
         from acorn.config import settings
@@ -389,7 +380,7 @@ class TaskDB(object):
         # single time a method is called. Instead, we only save them at the
         # frequency specified in the global settings file.
         from datetime import datetime
-        savefreq = self._get_option("savefreq", 2, int)
+        savefreq = TaskDB.get_option("savefreq", 2, int)
         
         if self.lastsave is not None:
             delta = (datetime.fromtimestamp(time()) -
@@ -414,7 +405,7 @@ class TaskDB(object):
                        "uuids": self.uuids}
                 with open(self.dbpath, 'w') as f:
                     json.dump(jdb, f)
-            except:
+            except: # pragma: no cover
                 from acorn.msg import err
                 import sys
                 raise
@@ -451,11 +442,4 @@ class Instance(object):
         #already have a paper trail that shows exactly how it was done; but for
         #these, we have to rely on human-specified descriptions.
         from acorn.logging.descriptors import describe
-        semitrack = (list, dict, set, tuple)
-        if isinstance(self.obj, semitrack):
-            if isinstance(self.obj, (list, tuple, set)):
-                return [describe(o) for o in self.obj]
-            elif isinstance(self.obj, dict):
-                return {k: describe(v) for k, v in self.obj.items()}
-        else:
-            return describe(self.obj)
+        return describe(self.obj)

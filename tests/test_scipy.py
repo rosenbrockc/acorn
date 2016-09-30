@@ -26,6 +26,8 @@ def test_decorate():
     """
     import acorn.scipy as sp
     from db import decorate_check
+    from acorn import set_writeable
+    set_writeable(False)    
     decorate_check("scipy")
 
 def test_interpolate():

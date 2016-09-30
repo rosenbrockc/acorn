@@ -27,23 +27,13 @@ def iswhat(o):
     isfs = {n: f for n, f in inspect.getmembers(inspect) if n[0:2] == "is"}
     return {n: f(o) for n, f in isfs.items()}
 
-def isbound(method):
-    """Returns True if the method is bounded (i.e., *requires* a
-    class instance to run.)
-    """
-    from inspect import ismethod, ismethoddescriptor as md
-    if hasattr(method, "__acorn__") and method.__acorn__ is not None:
-        return ismethod(method.__acorn__) or md(method.__acorn__)
-    else:
-        return ismethod(method) or md(method)
-
 def _safe_getmodule(o):
     """Attempts to return the module in which `o` is defined.
     """
     from inspect import getmodule
     try:
         return getmodule(o)
-    except:
+    except: # pragma: no cover
         #There is nothing we can do about this for now.
         pass
 
@@ -51,7 +41,7 @@ def _safe_getattr(o):
     """Gets the attribute from the specified object, taking the acorn decoration
     into account.
     """
-    def getattribute(attr):
+    def getattribute(attr): # pragma: no cover
         if hasattr(o, "__acornext__") and o.__acornext__ is not None:
             return o.__acornext__.__getattribute__(attr)
         elif hasattr(o, "__acorn__") and o.__acorn__ is not None:
@@ -68,7 +58,7 @@ def _safe_hasattr(o, attr):
     """
     try:
         has = hasattr(o, attr)
-    except:
+    except: # pragma: no cover
         has = False
         pass
     return has
@@ -78,7 +68,7 @@ def _update_attrs(nobj, oobj, exceptions=None, acornext=False):
     attributes in the exceptions list.
     """
     success = True
-    if acornext and hasattr(oobj, "__acornext__"):
+    if acornext and hasattr(oobj, "__acornext__"): # pragma: no cover
         target = oobj.__acornext__
     else:
         target = oobj
@@ -132,9 +122,6 @@ def _get_name_filter(package, context="decorate", reparse=False):
     
     from acorn.config import settings
     spack = settings(package)
-    if spack is None:
-        name_filters[pkey] = None
-        return None
 
     # The acorn.* sections allow for global settings that affect every package
     # that ever gets wrapped.
@@ -155,12 +142,14 @@ def _get_name_filter(package, context="decorate", reparse=False):
                 options = spack.options(section)
                 if "filter" in options:
                     filters.extend(re.split(r"\s*\$\s*", spack.get(section, "filter")))
-                if "rfilter" in options:
+                if "rfilter" in options: # pragma: no cover
+                    #Until now, the fnmatch filters have been the most
+                    #useful. So I don't have any unit tests for regex filters.
                     pfilters = re.split(r"\s*\$\s*", spack.get(section, "rfilter"))
                     rfilters.extend([re.compile(p, re.I) for p in pfilters])
                 if "ignore" in options:
                     ignores.extend(re.split(r"\s*\$\s*", spack.get(section, "ignore")))
-                if "rignore" in options:
+                if "rignore" in options: # pragma: no cover
                     pignores = re.split(r"\s*\$\s*", spack.get(section, "rignore"))
                     rignores.extend([re.compile(p, re.I) for p in pfilters])
 
@@ -206,7 +195,8 @@ def filter_name(funcname, package, context="decorate", explicit=False):
                 matched = True
                 return matched
 
-    if packfilter["rfilters"] is not None:
+    #We don't have any use cases yet for regex filters.
+    if packfilter["rfilters"] is not None: # pragma: no cover
         for pattern in packfilter["rfilters"]:
             if pattern.match(funcname):
                 matched = True
@@ -219,7 +209,7 @@ def filter_name(funcname, package, context="decorate", explicit=False):
                 matched = False
                 return matched
 
-    if packfilter["rignores"] is not None:
+    if packfilter["rignores"] is not None: # pragma: no cover
         for pattern in packfilter["rignores"]:
             if pattern.match(funcname):
                 matched = False
@@ -314,7 +304,7 @@ def _pre_create(cls, atdepth, stackdepth, *argl, **argd):
     if not atdepth:
         rstack = _reduced_stack()
         reduced = len(rstack)
-        if msg.will_print(3):
+        if msg.will_print(3): # pragma: no cover
             sstack = [' | '.join(map(str, r)) for r in rstack]
             msg.info("{} => stack ({}): {}".format(cls.__fqdn__, len(rstack),
                                                    ', '.join(sstack)), 3)
@@ -346,7 +336,7 @@ def _post_create(atdepth, entry, result):
             retid = _tracker_str(result)
             entry["r"] = retid
             ekey = retid
-        else:
+        else: # pragma: no cover
             ekey = _tracker_str(cls)
 
         msg.info("{}: {}".format(ekey, entry), 2)
@@ -373,7 +363,7 @@ def creationlog(base, package, stackdepth=_def_stackdepth):
         try:
             if six.PY2:
                 result = base.__old__(cls, *argl, **argd)
-            else:
+            else: # pragma: no cover
                 #Python 3 changed the way that the constructors behave. In cases
                 #where a class inherits only from object, and doesn't override
                 #the __new__ method, the __old__ we replaced was just the one
@@ -383,7 +373,7 @@ def creationlog(base, package, stackdepth=_def_stackdepth):
                 else:
                     result = base.__old__(cls, *argl, **argd)
                     
-        except TypeError:
+        except TypeError: # pragma: no cover
             #This is a crazy hack! We want this to be dynamic so that it can
             #work with any of the packages. If the error message suggests using
             #a different constructor, we go ahead and use it.
@@ -400,10 +390,10 @@ def creationlog(base, package, stackdepth=_def_stackdepth):
         if result is not None and hasattr(cls, "__init__"):
             try:
                 cls.__init__(result, *argl, **argd)
-            except:
+            except: # pragma: no cover
                 print(cls, argl, argd)
                 raise
-        else:
+        else: # pragma: no cover
             msg.err("Object creation failed for {}.".format(base.__name__))
 
         if not decorating:
@@ -433,13 +423,13 @@ def _pre_call(atdepth, parent, fqdn, stackdepth, *argl, **argd):
     from time import time
     if not atdepth:
         rstack = _reduced_stack()
-        if "<module>" in rstack[-1]:
+        if "<module>" in rstack[-1]: # pragma: no cover
             code = rstack[-1][1]
         else:
             code = ""
 
         reduced = len(rstack)
-        if msg.will_print(3):
+        if msg.will_print(3): # pragma: no cover
             sstack = [' | '.join(map(str, r)) for r in rstack]
             msg.info("{} => stack ({}): {}".format(fqdn, len(rstack),
                                              ', '.join(sstack)), 3)
@@ -466,7 +456,7 @@ def _pre_call(atdepth, parent, fqdn, stackdepth, *argl, **argd):
             if isinstance(argl[0], parent):
                 bound = True
             elif (inspect.isclass(ftype) and hasattr(ftype, "__bases__") and
-                inspect.isclass(parent) and hasattr(parent, "__bases__")):
+                inspect.isclass(parent) and hasattr(parent, "__bases__")): # pragma: no cover
                 common = set(ftype.__bases__) & set(parent.__bases__)
                 bound = len(common) > 0
                 
@@ -693,7 +683,7 @@ def _create_extension(o, otype, fqdn, pmodule):
         failed = not _update_attrs(xwrapper, o, ["__call__"])
 
         if otype in ["descriptors", "unknowns"] and inspect.ismodule(pmodule):
-            if hasattr(o, "__objclass__"):
+            if hasattr(o, "__objclass__"): # pragma: no cover
                 setattr(xwrapper, "__module__", pmodule.__name__)
             elif hasattr(o, "__class__") and o.__class__ is not None:
                 setattr(xwrapper, "__module__", pmodule.__name__)
@@ -729,7 +719,7 @@ def _safe_setattr(obj, name, value):
             setattr(obj.__func__, name, value)
             return True
         else:
-            if isinstance(obj, dict):
+            if isinstance(obj, dict): # pragma: no cover
                 obj[name] = value
             else:
                 setattr(obj, name, value)
@@ -782,7 +772,7 @@ def _extend_object(parent, n, o, otype, fqdn):
         try:
             setattr(parent, n, _extended_objs[okey])
             return _extended_objs[okey]
-        except KeyError:
+        except KeyError: # pragma: no cover
             msg.warn("Object extension failed: {} ({}).".format(o, otype))
 
 def _get_members(o):
@@ -890,7 +880,7 @@ def _split_object(pobj, package, resplit=False, packincl=None, skipext=False):
             if not packok and hasattr(o, "__class__") and o.__class__ is type:
                 fqdn_ = _fqdn(o, False, pmodule=pmodule)
                 incl = filter_name(fqdn_, package, explicit=True)
-                if incl:
+                if incl: # pragma: no cover
                     filesrc = inspect.getabsfile(pobj)
                     confok = "/{}/".format(package) in filesrc
                 
@@ -917,7 +907,7 @@ def _split_object(pobj, package, resplit=False, packincl=None, skipext=False):
             xobj = _extend_object(pobj, n, o, t, fqdn)
             if xobj is not None:
                 result[t].append((n, xobj))
-            else:
+            else: # pragma: no cover
                 msg.warn("Couldn't extend {} ({}).".format(o, t), 2)
         else:
             skipmsg = "Skipping {}: {} because of filter rules."
@@ -943,7 +933,7 @@ def _split_object(pobj, package, resplit=False, packincl=None, skipext=False):
             #so we have this catch-all over here.
             cancall = _safe_hasattr(o, "__call__")
             if cancall:
-                if skipext:
+                if skipext: # pragma: no cover
                     result["unknowns"].append((n, o))
                 else:
                     oappend(n, o, "unknowns", result, confok)
@@ -978,7 +968,7 @@ def _fqdn(o, oset=True, recheck=False, pmodule=None):
             otarget = o
             
         omod = _safe_getmodule(otarget) or pmodule
-        if omod is None and hasattr(otarget, "__objclass__"):
+        if omod is None and hasattr(otarget, "__objclass__"): # pragma: no cover
             omod = _safe_getmodule(otarget.__objclass__)
             parts = (omod.__name__,
                      otarget.__objclass__.__name__,
@@ -1023,11 +1013,7 @@ def _get_stack_depth(package, fqdn, defdepth=_def_stackdepth):
     if package not in _stack_config:
         from acorn.config import settings
         spack = settings(package)
-        if spack is None:
-            _stack_config[package] = None
-            return None
-        else:
-            _stack_config[package] = {}
+        _stack_config[package] = {}
 
         secname = "logging.depth"
         if spack.has_section(secname):
@@ -1036,7 +1022,7 @@ def _get_stack_depth(package, fqdn, defdepth=_def_stackdepth):
 
     if fqdn in _stack_config[package]:
         return _stack_config[package][fqdn]
-    elif "*" in _stack_config[package]:
+    elif "*" in _stack_config[package]: # pragma: no cover
         return _stack_config[package]["*"]
     else:
         return defdepth
@@ -1270,7 +1256,7 @@ def postfix(package):
             #been extended first, and then decorated.
             key = id(obj)
             fqdn_ = _fqdn(obj, False)
-            if fqdn_ is None:
+            if fqdn_ is None: # pragma: no cover
                 continue
 
             packname = fqdn_.split('.')[0]

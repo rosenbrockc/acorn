@@ -38,12 +38,7 @@ def settings(package, reload_=False):
     global packages
     if package not in packages or reload_:
         from os import path
-        try:
-            from configparser import ConfigParser
-        except ImportError:
-            #py3 rename of the module to lower case.
-            from ConfigParser import ConfigParser
-            
+        from six.moves.configparser import ConfigParser            
         result = ConfigParser()
         if package != "acorn":
             confpath = _package_path(package)

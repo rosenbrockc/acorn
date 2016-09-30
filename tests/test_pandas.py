@@ -130,7 +130,11 @@ def test_instance():
 
     assert e2["m"] == "pandas.core.frame.apply"
     assert e2["a"]["_"][0] == u0
-    assert e2["a"]["_"][1] == "numpy.sqrt"
+    #Unfortunately, the order in which members of a package is returned is not
+    #always deterministic, so numpy.sqrt may be first picked up by
+    #numpy.matlib.sqrt.
+    assert (e2["a"]["_"][1] == "numpy.sqrt" or
+            e2["a"]["_"][1] == "numpy.matlib.sqrt")
     assert u2 == u0
 
     assert e3["m"] == "pandas.core.generic.describe"

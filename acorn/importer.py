@@ -10,47 +10,6 @@ _special = ["scipy", "sklearn", "matplotlib"]
 """list: of packages that have special extensions or import behavior and cannot
 be deco-imported automatically by `acorn`.
 """
-_removed = {}
-"""dict: keys are package names that were previously scratched from
-`sys.modules`. Values are the removed module names and values.
-"""
-
-def restore(package):
-    """Restores the modules and sub-modules to `sys.modules` that were
-    previously scratched.
-
-    Args:
-        package (str): name of the package to restore to `sys.modules`.
-    """
-    if package not in _removed:
-        return
-    
-    import sys
-    for n, o in _removed[package].items():
-        #We just overwrite whatever is already there...
-        sys.modules[n] = _removed[package].pop(n)
-
-def scratch(package, store=True):
-    """Removes all traces of package and its sub-modules from `sys.modules`
-    optionally storing the removed items in the `store` dict.
-
-    Args:
-        package (str): name of the package to remove from `sys.modules`.
-        store (bool): when specified, each module/sub-module removed will first be
-          appended to the global :data:`_removed` dict so it can be restored
-          later if needed.
-    """
-    import sys
-    global _removed
-    if package not in _removed:
-        _removed[package] = {}
-        
-    for n in list(sys.modules.keys()):
-        if n[0:len(package)] == package:
-            if store:
-                _removed[package][n] = sys.modules.pop(n)
-            else:
-                del sys.modules[n]
     
 def _load_package_config(reload_=False):
     """Loads the package configurations from the global `acorn.cfg` file.
@@ -140,7 +99,9 @@ def load_decorate(package):
     
     return apack
 
-class AcornStandardLoader(object):
+class AcornStandardLoader(object): # pragma: no cover
+    #I am having issues with intercepting all loads. At the least, pytest won't
+    #import properly, so I am disabling this for now.
     """Loads packages *without* decoration, but with the correct flags enabled
     so that if those packages imported acorn decorated ones, they don't run all
     the logging machinery during imports.
@@ -172,7 +133,7 @@ class AcornDecoratingLoader(object):
         self.package = package
         
     def load_module(self, fullname):
-        if fullname in sys.modules:
+        if fullname in sys.modules: # pragma: no cover.
             msg.info("Reusing existing import for '{}'".format(fullname), 3)
             mod = sys.modules[fullname]
         else:

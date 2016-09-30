@@ -38,6 +38,9 @@ def test_decorate():
     from db import decorate_check
     decorate_check("numpy")
 
+    from acorn.importer import reload_cache
+    reload_cache()
+
 _uuid_a = None
 """str: uuid of the fixture 'a' so that we can make sure it is referenced
 correctly in subsequent tests.
