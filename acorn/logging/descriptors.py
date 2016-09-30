@@ -15,7 +15,7 @@ def describe(o):
     #this object in the config file for the package.
     from inspect import getmodule
     from acorn.logging.decoration import _fqdn
-    fqdn = _fqdn(o)
+    fqdn = _fqdn(o, False)
     if fqdn is None:
         #This should not have happened; if the FQDN couldn't be determined, then
         #we should have never logged it.

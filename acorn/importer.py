@@ -88,14 +88,14 @@ class AcornMetaImportFinder(object):
         self.prefix = prefix
     
     def find_module(self, fullname, packpath=None):
-        if fullname[0:len(self.prefix)] != self.prefix:
+        global hooks
+        if (fullname[0:len(self.prefix)] != self.prefix):
             return None
 
         if fullname.count('.') > 1:
             #Acorn isn't setup to work with sub-packages.
             return None
 
-        global hooks
         already = False
         package = fullname.split('.')[-1]
         if package in _packages and _packages[package]:
@@ -139,7 +139,28 @@ def load_decorate(package):
     set_decorating(origdecor)
     
     return apack
-    
+
+class AcornStandardLoader(object):
+    """Loads packages *without* decoration, but with the correct flags enabled
+    so that if those packages imported acorn decorated ones, they don't run all
+    the logging machinery during imports.
+    """
+    def __init__(self, package):
+        self.package = package
+        
+    def load_module(self, fullname):
+        from acorn.logging.decoration import set_decorating, decorating
+        global hooks
+        odecor = decorating
+        set_decorating(True)
+
+        from importlib import import_module
+        mod = import_module(fullname, self.package)
+        hooks.remove(fullname)
+        
+        set_decorating(odecor)
+        return mod
+
 class AcornDecoratingLoader(object):
     """Loads packages that need to be decorated for automatic logging by
     `acorn`.

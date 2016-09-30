@@ -10,7 +10,7 @@ atexit.register(cleanup)
 import acorn.subclass
 import acorn.importer
 
-def is_ipython():
+def is_ipython(): # pragma: no cover
     """Returns True if acorn is imported from an ipython notebook or terminal.
     """
     try:
@@ -19,9 +19,11 @@ def is_ipython():
     except NameError:
         return False
 
-if is_ipython():
+if is_ipython(): # pragma: no cover
     from IPython import get_ipython
     ipython = get_ipython()
     #Load the ipython extension for automatic decoration of new methods and
     #classes.
     ipython.magic("load_ext acorn.ipython")
+
+import acorn.analyze

@@ -95,7 +95,7 @@ def cleanup():
         msg.err("Project {1}.{2} save failed:\n{0}".format(tb, *fdb),
                 prefix=False)
     
-def tracker(obj):
+def tracker(argobj):
     """Returns the Instance of the specified object if it is one that
     we track by default.
 
@@ -109,9 +109,25 @@ def tracker(obj):
     import types as typ
     import numpy as anp
     global oids, uuids
-    untracked = (basestring, int, long, float, complex)
-    semitrack = (list, dict, set, tuple)
-    
+    import six
+    from inspect import isclass
+    untracked = (six.string_types, six.integer_types, float,
+                 complex, six.text_type)
+
+    if six.PY2:
+        semitrack = (list, dict, set, tuple)
+    else:
+        semitrack = (list, dict, set, tuple, range, filter, map)
+
+    #If we wrapped a function that is being passed as an argument, we don't want
+    #to interfere with the actual intent of the user, to log the *original*
+    #function being passed as an argument.
+    if (not isclass(type(argobj)) and hasattr(argobj, "__acornext__")
+        and argobj.__acornext__ is not None):
+        obj = argobj.__acornext__
+    else:
+        obj = argobj
+        
     if (isinstance(obj, semitrack) and
         all([isinstance(t, untracked) for t in obj])):
         if len(obj) > 0:
@@ -125,6 +141,8 @@ def tracker(obj):
         #dict or tuple; this is necessary so that we can keep track of
         #subsequent calls made with unpacked parts of the tuple.
         return [tracker(o) for o in obj]
+    elif isinstance(obj, slice):
+        return "slice({}, {}, {})".format(obj.start, obj.stop, obj.step)
     elif type(obj) is type:
         return obj.__name__
     elif type(obj) is typ.LambdaType:
@@ -133,7 +151,11 @@ def tracker(obj):
             #decorated.
             return obj.__fqdn__
         else:
-            return "lambda ({})".format(', '.join(obj.func_code.co_varnames))
+            if six.PY2:
+                _code = obj.func_code
+            else:
+                _code = obj.__code__
+            return "lambda ({})".format(', '.join(_code.co_varnames))
     elif type(obj) in [typ.FunctionType, typ.MethodType]:
         return obj.__name__
     elif type(obj) is anp.ufunc:
@@ -177,6 +199,31 @@ def _dbdir():
         mkdir(dbdir)
         
     return dbdir
+
+def _json_clean(d):
+    """Cleans the specified python `dict` by converting any tuple keys to
+    strings so that they can be serialized by JSON.
+
+    Args:
+        d (dict): python dictionary to clean up.
+
+    Returns:
+        dict: cleaned-up dictionary.
+    """
+    result = {}
+    compkeys = {}
+    for k, v in d.items():
+        if not isinstance(k, tuple):
+            result[k] = v
+        else:
+            #v is a list of entries for instance methods/constructors on the
+            #UUID of the key. Instead of using the composite tuple keys, we
+            #switch them for a string using the 
+            key = "c.{}".format(id(k))
+            result[key] = v
+            compkeys[key] = k
+
+    return (result, compkeys)
 
 def record(ekey, entry):
     """Records the specified entry to the key-value store under the specified
@@ -257,12 +304,22 @@ class TaskDB(object):
 
         #We also need to make sure we have uuids and origin information stored
         #for any uuids present in the parameter string.
-        if entry["returns"] is not None:
-            uid = entry["returns"]
+        from uuid import UUID
+        uid = None
+        if entry["r"] is not None:
+            uid = entry["r"]
+        elif isinstance(ekey, str):
+            #For many methods we don't duplicate the UUID in the returns part
+            #because it wastes space. In those cases, the ekey is a UUID.
+            try:
+                uid = str(UUID(ekey))
+            except ValueError:
+                pass
+
+        if uid is not None and isinstance(uid, str):
             self._log_uuid(uid)
 
-        from uuid import UUID
-        for larg in entry["args"]["__"]:
+        for larg in entry["a"]["_"]:
             #We use the constructor to determine if the format of the argument
             #is a valid UUID; if it isn't then we catch the error and keep
             #going.
@@ -270,7 +327,7 @@ class TaskDB(object):
                 continue
             
             try:
-                uid = UUID(larg)
+                uid = str(UUID(larg))
                 self._log_uuid(uid)
             except ValueError:
                 #This was obviously not a UUID, we don't need to worry about it,
@@ -278,12 +335,12 @@ class TaskDB(object):
                 pass
 
         #We also need to handle the keyword arguments; these are keyed by name.
-        for key, karg in entry["args"].items():
-            if key == "__" or not isinstance(karg, str):
+        for key, karg in entry["a"].items():
+            if key == "_" or not isinstance(karg, str):
                 #Skip the positional arguments since we already handled them.
                 continue
             try:
-                uid = UUID(karg)
+                uid = str(UUID(karg))
                 self._log_uuid(uid)
             except ValueError:
                 pass            
@@ -351,13 +408,16 @@ class TaskDB(object):
 
             import json
             try:
-                jdb = {"entities": self.entities,
+                entities, compkeys = _json_clean(self.entities)
+                jdb = {"entities": entities,
+                       "compkeys": compkeys,
                        "uuids": self.uuids}
                 with open(self.dbpath, 'w') as f:
                     json.dump(jdb, f)
             except:
                 from acorn.msg import err
                 import sys
+                raise
                 err("{}: {}".format(*sys.exc_info()[0:2]))
 
             self.lastsave = time()
