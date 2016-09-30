@@ -1,3 +1,4 @@
+[![Build Status](https://travis-ci.org/rosenbrockc/acorn.svg?branch=master)](https://travis-ci.org/rosenbrockc/acorn)
 [![Coverage Status](https://coveralls.io/repos/github/rosenbrockc/acorn/badge.svg?branch=master)](https://coveralls.io/github/rosenbrockc/acorn?branch=master)
 
 # Automatic Computational Research Notebook
