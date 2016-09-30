@@ -31,6 +31,7 @@ setup(name='acorn',
           "argparse",
           "pyparsing",
           "termcolor",
+          "six"
       ],
       packages=['acorn', 'acorn.logging', 'acorn.subclass', 'acorn.analyze'],
       scripts=[],
