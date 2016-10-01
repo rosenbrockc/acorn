@@ -26,7 +26,7 @@ setup(name='acorn',
       url='https://github.com/rosenbrockc/acorn',
       license='MIT',
       setup_requires=['pytest-runner',],
-      tests_require=['pytest',],
+      tests_require=['pytest', 'numpy', 'scipy', 'sklearn', 'pandas'],
       install_requires=[
           "argparse",
           "pyparsing",
