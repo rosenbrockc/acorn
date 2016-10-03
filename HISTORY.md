@@ -1,5 +1,9 @@
 # Revision History
 
+## Revision 0.0.7
+
+- Added special packages with custom decoration machinery to the setup file so that they would be available as packages after a `pip install`.
+
 ## Revision 0.0.6
 
 - Added `acrn.py` setup and configuration file. It allows the custom `~/.acorn` directory to be created with copies of all the default configuration files.
