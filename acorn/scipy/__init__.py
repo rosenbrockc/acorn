@@ -4,6 +4,12 @@
 # explicitly asked for before they are loaded into the package namespace. So we
 # do that here.
 
+#Because scipy uses so much of numpy, we need to set the global decorating
+#variable *before* we even try and import anything from it.
+from acorn.logging.decoration import decorating, set_decorating
+origdecor = decorating
+set_decorating(True)
+
 import scipy as asp
 from scipy import optimize, spatial, stats, signal, odr, io, constants
 from scipy import cluster 
@@ -16,5 +22,9 @@ decorate(asp)
 from acorn.logging.decoration import postfix
 postfix(asp)
 
+#Return the decoration to what it was before.
+set_decorating(origdecor)
+
 import sys
 sys.modules[__name__] = asp
+

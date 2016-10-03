@@ -1,5 +1,9 @@
 # Revision History
 
+## Revision 0.0.8
+
+- Re-added the pre-import decoration on `scipy`. Forgot to add a comment previously explaining why it had to be there in addition to being in the :func:`decoration.decorate` call.
+
 ## Revision 0.0.7
 
 - Added special packages with custom decoration machinery to the setup file so that they would be available as packages after a `pip install`.

@@ -1327,6 +1327,10 @@ def postfix(package):
     """
     #This time we don't have to go recursively; we can just look at top-level
     #objects in the package.
+    global decorating
+    origdecor = decorating
+    decorating = True
+    
     packsplit = _split_object(package, package.__name__,
                               resplit=True, packincl=["numpy"], skipext=True)
     for ot, ol in packsplit.items():
@@ -1356,3 +1360,4 @@ def postfix(package):
                     setattr(package, name, clog)
                     dmsg = "Postfix decorated {} to {}."
                     msg.info(dmsg.format(name, target), 3)
+    decorating = odecor
