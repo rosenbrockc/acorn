@@ -1,5 +1,9 @@
 # Revision History
 
+## Revision 0.0.9
+
+- Forgot to run unit tests before pushing the package. Fixes a simple typo.
+
 ## Revision 0.0.8
 
 - Re-added the pre-import decoration on `scipy`. Forgot to add a comment previously explaining why it had to be there in addition to being in the :func:`decoration.decorate` call.

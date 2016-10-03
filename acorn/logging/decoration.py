@@ -1360,4 +1360,4 @@ def postfix(package):
                     setattr(package, name, clog)
                     dmsg = "Postfix decorated {} to {}."
                     msg.info(dmsg.format(name, target), 3)
-    decorating = odecor
+    decorating = origdecor
