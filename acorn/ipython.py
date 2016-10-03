@@ -18,7 +18,7 @@ class InteractiveDecorator(object):
     """
     def __init__(self, ip):
         self.shell = ip
-        self.atypes = ["function", "classobj", "staticmethod"]
+        self.atypes = ["function", "classobj", "staticmethod", "type"]
         self.entities = {k: {} for k in self.atypes}
 
     def _get_decoratables(self, atype):
@@ -38,7 +38,7 @@ class InteractiveDecorator(object):
             if varobj is None: # Nothing useful can be done.
                 continue
             
-            if atype == "classobj":
+            if atype in ["classobj", "type"]:
                 #Classes are only relevant if they have no __file__
                 #attribute; all other classes should be decorated by the
                 #full acorn machinery.
@@ -73,6 +73,64 @@ class InteractiveDecorator(object):
                 
         return result        
 
+    def _logdef(self, n, o, otype):
+        """Logs the definition of the object that was just auto-decorated inside
+        the `ipython` notebook.
+        """
+        import re
+        try:
+            #The latest input cell will be the one that this got executed
+            #from. TODO: actually, if acorn got imported after the fact, then
+            #the import would have caused all the undecorated functions to be
+            #decorated as soon as acorn imported. I suppose we just won't have
+            #any code for that case.
+            if otype == "classes":
+                cellno = max([int(k[2:]) for k in self.shell.user_ns.keys()
+                              if re.match("_i\d+", k)])
+            elif otype == "functions":
+                cellno = int(o.__code__.co_filename.strip("<>").split('-')[2])
+        except:
+            #This must not have been an ipython notebook declaration, so we
+            #don't store the code.
+            cellno = None
+            pass
+        
+        code = ""
+        if cellno is not None:
+            cellstr = "_i{0:d}".format(cellno)
+            if cellstr in self.shell.user_ns:
+                cellcode = self.shell.user_ns[cellstr]
+                import ast
+                astm = ast.parse(cellcode)
+                ab = astm.body
+                parts = {ab[i].name: (ab[i].lineno, None if i+1 >= len(ab)
+                                      else ab[i+1].lineno) 
+                         for i, d in enumerate(ab)}
+                if n in parts:
+                    celllines = cellcode.split('\n')
+                    start, end = parts[n]
+                    if end is not None:
+                        code = celllines[start-1:end-1]
+                    else:
+                        code = celllines[start-1:]
+
+        #Now, we actually create the entry. Since the execution for function
+        #definitions is almost instantaneous, we just log the pre and post
+        #events at the same time.
+        from time import time
+        from acorn.logging.database import record
+        from acorn.logging.decoration import _tracker_str
+        entry = {
+            "m": "__main__.{}".format(n),
+            "a": {"_": []},
+            "s": time(),
+            "r": None,
+            "c": code,
+        }
+        from acorn import msg
+        record("def", entry)
+        msg.info(entry, 2)
+        
     def _decorate(self, atype, n, o):
         """Decorates the specified object for automatic logging with acorn.
 
@@ -83,10 +141,16 @@ class InteractiveDecorator(object):
         """
         typemap = {"function": "functions",
                    "classobj": "classes",
-                   "staticmethod": "methods"}
+                   "staticmethod": "methods",
+                   "type": "classes"}
         from acorn.logging.decoration import decorate_obj
         try:
-            decorate_obj(self.shell.user_ns, n, o, typemap[atype])
+            otype = typemap[atype]
+            decorate_obj(self.shell.user_ns, n, o, otype)
+            #Also create a log in the database for this execution; this allows a
+            #user to track the changes they make in prototyping function and
+            #class definitions.
+            self._logdef(n, o, otype)
             msg.okay("Auto-decorated {}: {}.".format(n, o))
         except:
             msg.err("Error auto-decorating {}: {}.".format(n, o))

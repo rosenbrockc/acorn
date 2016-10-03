@@ -3,13 +3,38 @@ classes within a module. The entries created by the decorators have been
 pre-compressed for clarity and file size. Thus the short key names mean the
 following:
 
-m => method
-a => args
-r => returns
-s => start
-e => elapsed
-x => analysis
-c => code
+.. code-block:: ini
+
+    m = method
+    a = args
+    r = returns
+    s = start
+    e = elapsed
+    x = analysis
+    c = code
+
+Examples:
+
+Decorate a new package using the acorn decorator machinery.
+
+>>> from acorn.logging.decoration import decorate
+>>> import package
+>>> decorate(package)
+
+The decorate routine replaces all the members of the package with decorated ones
+and does this recursively until the whole package is decorated. We can also use
+the automatic decoration machinery with `acorn`. Open the `acorn.cfg` file and
+add the name of the package to `[acorn.packages]`:
+
+.. code-block:: ini
+
+    package=1
+
+Then, you can auto-decorate the package using:
+
+.. code-block:: python
+
+    import acorn.package
 """
 from acorn import msg
 from acorn.logging.database import tracker, record
@@ -19,9 +44,25 @@ import acorn
 import six
 import inspect
 
+decorating = False
+"""bool: when True, the script is decorating objects; if any other objects have
+methods that call decorated objects, we don't want the decorations to log
+entries since we are still in the initialization phase.
+"""
+streamlining = False
+"""bool: when True, a method has disabled all logging for subsequent calls. The
+method will reset this variable once it has executed. This is needed to optimize
+packages like `matplotlib` that make thousands of calls for a high-level method
+like plot.
+"""
+
 def iswhat(o):
     """Returns a dictionary of all possible identity checks available to
-    :module:`inspect` applied to `o`.
+    :mod:`inspect` applied to `o`.
+
+    Returns:
+        dict: keys are `inspect.is*` function names; values are `bool` results
+          returned by each of the methods.
     """
     import inspect
     isfs = {n: f for n, f in inspect.getmembers(inspect) if n[0:2] == "is"}
@@ -475,7 +516,6 @@ def _pre_call(atdepth, parent, fqdn, stackdepth, *argl, **argd):
             "s": time(),
             "r": None,
             "c": code,
-            "stack": reduced
         }
     else:
         entry = None
@@ -512,52 +552,45 @@ def _post_call(atdepth, package, fqdn, result, entry, bound, ekey, argl, argd):
     else:
         return (None, None)    
 
-def rt_decorate_post(fqdn, package, result, entry, bound, ekey,
-                     *argl, **argd):
+def post(fqdn, package, result, entry, bound, ekey, *argl, **argd):
     """Adds logging for the post-call result of calling the method externally.
 
     Args:
         fqdn (str): fully-qualified domain name of the function being logged.
-        package (str): name of the package we are logging for.
-        result: of calling the method we are logging.
-        entry (dict): one of the values returned by :func:`rt_decorate_pre`.
+        package (str): name of the package we are logging for. Usually the first
+          element of `fqdn.split('.')`.
+        result: returned from calling the method we are logging.
+        entry (dict): one of the values returned by :func:`pre`.
         bound (bool): true if the method is bound.
         ekey (str): key under which to store the entry in the database.
     """
     global _atdepth_call, _cstack_call
-    r = (None, None)
-    if not decorating:
-        _cstack_call.pop()
-        if len(_cstack_call) == 0:
-            _atdepth_call = False
-        r = _post_call(_atdepth_call, package, fqdn, result,
-                       entry, bound, ekey, argl, argd)
+    _cstack_call.pop()
+    if len(_cstack_call) == 0:
+        _atdepth_call = False
+    r = _post_call(_atdepth_call, package, fqdn, result,
+                   entry, bound, ekey, argl, argd)
     return r
         
-def rt_decorate_pre(fqdn, parent, stackdepth, *argl, **argd):
+def pre(fqdn, parent, stackdepth, *argl, **argd):
     """Adds logging for a call to the specified function that is being handled
     by an external module.
 
     Args:
         fqdn (str): fully-qualified domain name of the function being logged.
-        parent: object that the function belongs to.
-        context (str): one of ['pre', 'post']; specifies whether we are creating the
-          entry or completing the entry.
+        parent: *object* that the function belongs to.
         stackdepth (int): maximum stack depth before entries are ignored.
         argl (list): positional arguments passed to the function call.
         argd (dict): keyword arguments passed to the function call.
     """
     global _atdepth_call, _cstack_call
-    if not decorating:
-        #We add +1 to stackdepth because this method had to be called in
-        #addition to the wrapper method, so we would be off by 1.
-        pcres = _pre_call(_atdepth_call, parent, fqdn, stackdepth+1,
-                          *argl, **argd)
-        entry, _atdepth_call, reduced, bound, ekey = pcres
-        _cstack_call.append(fqdn)
-        return (entry, bound, ekey)
-    else:
-        return (None, None, None)
+    #We add +1 to stackdepth because this method had to be called in
+    #addition to the wrapper method, so we would be off by 1.
+    pcres = _pre_call(_atdepth_call, parent, fqdn, stackdepth+1,
+                      *argl, **argd)
+    entry, _atdepth_call, reduced, bound, ekey = pcres
+    _cstack_call.append(fqdn)
+    return (entry, bound, ekey)
 
 class CallingDecorator(object):
     """Decorator for wrapping package library methods for intelligent
@@ -573,7 +606,7 @@ class CallingDecorator(object):
 
         >>> from acorn.logging.decoration import CallingDecorator as CD
         >>> decor = CD(myfunc)
-        >>> setattr(mymod, "myfunc", decor(fqdn, package, None)
+        >>> setattr(mymod, "myfunc", decor(fqdn, package, None))
     """
     def __init__(self, func):
         self.func = func
@@ -594,17 +627,30 @@ class CallingDecorator(object):
               based on package settings.
         """
         def wrapper(*argl, **argd):
-            global _atdepth_call, _cstack_call
-            entry, bound, ekey = rt_decorate_pre(fqdn, parent, stackdepth,
-                                                 *argl, **argd)
-            
+            global streamlining
+            origstream = None
+            if not (decorating or streamlining):
+                entry, bound, ekey = pre(fqdn, parent, stackdepth, *argl,**argd)
+
+                #See if we need to enable streamlining for this method call.
+                if fqdn in _streamlines and _streamlines[fqdn]:
+                    origstream = streamlining
+                    streamlining = True
+                
             result = self.func(*argl, **argd)
             if not decorating:
                 if fqdn in _callwraps:
-                    result = _callwraps[fqdn](result)
+                    result = _callwraps[fqdn](result)            
 
-            rt_decorate_post(fqdn, package, result, entry, bound, ekey,
-                             *argl, **argd)
+            #If we don't disable streamlining for the original method that set
+            #it, then the post call would never be reached.
+            if origstream is not None:
+                #We avoid another dict lookup by checking whether we set the
+                #*local* origstream to something above.
+                streamlining = origstream
+                    
+            if not (decorating or streamlining):
+                post(fqdn, package, result, entry, bound, ekey, *argl, **argd)
             return result
 
         _safe_setattr(wrapper, "__acorn__", self.func)
@@ -726,7 +772,7 @@ def _safe_setattr(obj, name, value):
             return True
     except (TypeError, AttributeError):
         _set_failures.append(okey)
-        msg.warn("Failed '{}' attribute set on {}.".format(name, obj))
+        msg.warn("Failed {}:{} attribute set on {}.".format(name, value, obj))
         return False
     
 def _extend_object(parent, n, o, otype, fqdn):
@@ -968,23 +1014,25 @@ def _fqdn(o, oset=True, recheck=False, pmodule=None):
             otarget = o
             
         omod = _safe_getmodule(otarget) or pmodule
-        if omod is None and hasattr(otarget, "__objclass__"): # pragma: no cover
+        if (omod is None and hasattr(otarget, "__objclass__") and
+            otarget.__objclass__ is not None): # pragma: no cover
             omod = _safe_getmodule(otarget.__objclass__)
-            parts = (omod.__name__,
+            parts = ("<unknown>" if omod is None else omod.__name__,
                      otarget.__objclass__.__name__,
                      otarget.__name__)
-            msg.std("FQDN: objclass => {}".format(parts), 4)
+            #msg.std("FQDN: objclass => {}".format(parts), 4)
             result = "{}.{}.{}".format(*parts)
-        elif omod is None and hasattr(otarget, "__class__"):
+        elif (omod is None and hasattr(otarget, "__class__") and
+              otarget.__class__ is not None):
             omod = _safe_getmodule(otarget.__class__)
-            parts = (omod.__name__,
+            parts = ("<unknown>" if omod is None else omod.__name__,
                      otarget.__class__.__name__,
                      otarget.__name__)
-            msg.std("FQDN: class => {}".format(parts), 4)
+            #msg.std("FQDN: class => {}".format(parts), 4)
             result = "{}.{}.{}".format(*parts)
         elif omod is not otarget:
             parts = (_fqdn(omod, False), otarget.__name__)
-            msg.std("FQDN: o => {}".format(parts), 4)
+            #msg.std("FQDN: o => {}".format(parts), 4)
             result = "{}.{}".format(*parts)
         else:
             result = otarget.__name__
@@ -1051,6 +1099,15 @@ def decorate_obj(parent, n, o, otype, recurse=True, redecorate=False):
           specifies which group the object belongs to.
         recurse (bool): when True, the objects methods and functions are also
           decorated recursively.
+
+    Examples:
+        Decorate the function `mymod.myfunc` to log automatically to the
+        database.
+
+    >>> from acorn.logging.decoration import decorate_obj
+    >>> import mymod
+    >>> decorate_obj(mymod, "myfunc", mymod.myfunc, "functions")
+
     """
     global _decor_count, _decorated_o
     from inspect import isclass, isfunction, ismodule
@@ -1069,21 +1126,16 @@ def decorate_obj(parent, n, o, otype, recurse=True, redecorate=False):
         if hasattr(o, "__call__") and otype != "classes":
             #calling on class types is handled by the construction decorator
             #below.
-            # if isclass(parent):
-            #     clog = callinglog(o.__call__, fqdn, package, parent, d)
-            # else:
-            #     clog = callinglog(o.__call__, fqdn, package, None, d)
             cdecor = CallingDecorator(o.__call__)
             if isclass(parent):
                 clog = cdecor(fqdn, package, parent, d)
             else:
                 clog = cdecor(fqdn, package, None, d)
             
-            if ((hasattr(o, "im_self") and o.im_self is parent)):
-                clog = staticmethod(clog)
-                
             _safe_setattr(clog, "__acornext__", o)
             _update_attrs(clog, o)
+            if ((hasattr(o, "im_self") and o.im_self is parent)):
+                clog = staticmethod(clog)               
             setok = _safe_setattr(parent, n, clog)
 
             if setok:
@@ -1152,6 +1204,27 @@ def _load_subclasses(package):
         if spack.has_section("subclass"):
             _explicit_subclasses.update(dict(spack.items("subclass")))
 
+_streamlines = {}
+"""dict: keys are function fqdns; values are `bool`, indicating whether the
+method should streamline all subsequent method calls.
+"""
+def _load_streamlines(packname, package):
+    """Loads the settings for methods that should streamline subsequent method
+    calls. This is useful for methods that have thousands of sub-calls and wish
+    to avoid checking the stack depth at each of those.
+
+    Args:
+        packname (str): name of the package to get config settings for.
+        package: actual package object.
+    """
+    global _streamlines
+    from acorn.config import settings
+    spack = settings(packname)
+    if spack.has_section("streamline"):
+        streamlines = dict(spack.items("streamline"))
+        for fqdn, active in streamlines.items():
+            _streamlines[fqdn] = active == "1"
+
 _callwraps = {}
 """dict: keys are function fqdns; values are other function, class or method
 fqdns that will be called to wrap the result of the original function call
@@ -1178,17 +1251,6 @@ def _load_callwraps(packname, package):
                 caller = _obj_getattr(package, target)
                 _callwraps[fqdn] = caller
 
-decorating = False
-"""bool: when True, the script is decorating objects; if any other objects have
-methods that call decorated objects, we don't want the decorations to log
-entries since we are still in the initialization phase.
-"""
-streamlining = False
-"""bool: when True, a method has disabled all logging for subsequent calls. The
-method will reset this variable once it has executed. This is needed to optimize
-packages like `matplotlib` that make thousands of calls for a high-level method
-like plot.
-"""
 def set_decorating(decorating_):
     """Sets whether the module is operating in decorating mode.
     """
@@ -1222,7 +1284,9 @@ def decorate(package):
         _load_subclasses(npack)
         
         packsplit = _split_object(package, package.__name__)
+        origdecor = decorating
         decorating = True
+        
         for ot, ol in packsplit.items():
             for name, obj in ol:
                 decorate_obj(package, name, obj, ot)
@@ -1230,7 +1294,8 @@ def decorate(package):
         #Now that we have actually decorated all the objects, we can load the
         #call wraps to point to the new decorated objects.
         _load_callwraps(npack, package)
-        decorating = False
+        _load_streamlines(npack, package)
+        decorating = origdecor
         _decorated_packs.append(npack)
         _pack_paths.append("{}{}".format(npack, sep))
         msg.info("{}: {} (Decor/Skip/NA)".format(npack, _decor_count[npack]))
@@ -1242,6 +1307,23 @@ def postfix(package):
 
     Args:
         package: package object to examine for compliance.
+
+    Examples:
+    When `scipy` is imported, it imports most of `numpy` automatically and then
+    has references to the original, *undecorated* `numpy` functions. We use
+    :func:`postfix` to set the `scipy` references to the decorated `numpy`
+    functions.
+
+    >>> import scipy
+    >>> import acorn.numpy
+    >>> from acorn.logging.decoration import postfix, decorate
+    >>> decorate(scipy)
+    >>> postfix(scipy)
+
+    When we call :func:`decorate` on `scipy`, the references to `numpy`
+    functions are ignored, because they don't belong to the `scipy`
+    package. This filtering is a feature to prevent `acorn` repeatedly visiting
+    commonly used modules that are imported.
     """
     #This time we don't have to go recursively; we can just look at top-level
     #objects in the package.

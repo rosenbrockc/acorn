@@ -4,13 +4,6 @@
 # explicitly asked for before they are loaded into the package namespace. So we
 # do that here.
 
-from acorn.logging.decoration import set_decorating, decorating
-
-#Before we do any imports, we need to set that we are decorating so that
-#everything works as if `acorn` wasn't even here.
-origdecor = decorating
-set_decorating(True)
-
 import scipy as asp
 from scipy import optimize, spatial, stats, signal, odr, io, constants
 from scipy import cluster 
@@ -25,7 +18,3 @@ postfix(asp)
 
 import sys
 sys.modules[__name__] = asp
-
-#Set the decoration back to what it was.
-from acorn.logging.decoration import set_decorating
-set_decorating(origdecor)

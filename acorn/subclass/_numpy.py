@@ -27,18 +27,16 @@ def _get_acorn(self, method, *items):
         r = np.ndarray.__acornext__.__getitem__(self, *items)
         
     if not (decorating or streamlining):
-        from acorn.logging.decoration import (rt_decorate_pre,
-                                              rt_decorate_post,
-                                              _fqdn)
+        from acorn.logging.decoration import (pre, post, _fqdn)
         if method == "slice":
             fqdn = "numpy.ndarray.__getslice__"
         else:
             fqdn = "numpy.ndarray.__getitem__"
-        preres = rt_decorate_pre(fqdn, np.ndarray, 5, self, *items)
+        preres = pre(fqdn, np.ndarray, 5, self, *items)
         entry, bound, ekey = preres
         # This method can trick acorn into thinking that it is a bound
         # method. We want it to behave like it's not.
-        rt_decorate_post(fqdn, "numpy", r, entry, np.ndarray, ekey)
+        post(fqdn, "numpy", r, entry, np.ndarray, ekey)
     return r 
 
 class ndarray(np.ndarray):
@@ -86,12 +84,10 @@ class ndarray(np.ndarray):
 
     def __array_wrap__(self, outarr, context=None):
         if isinstance(context, tuple):
-            from acorn.logging.decoration import (rt_decorate_pre,
-                                                  rt_decorate_post,
-                                                  _fqdn, _def_stackdepth)
+            from acorn.logging.decoration import (pre, post, _fqdn,
+                                                  _def_stackdepth)
             fqdn = _fqdn(context[0], False)
-            entry, bound, ekey = rt_decorate_pre(fqdn, None, _def_stackdepth,
-                                                 *context[1])
+            entry, bound, ekey = pre(fqdn, None, _def_stackdepth, *context[1])
 
         # Because we had to subclass numpy.ndarray, the original methods get
         # stuck in an infinite loop (max. recursion depth exceeded errors). So,
@@ -106,6 +102,6 @@ class ndarray(np.ndarray):
                 r = np.ndarray.__array_wrap__(self, outarr, context)
             
         if isinstance(context, tuple):
-            rt_decorate_post(fqdn, "numpy", r, entry, bound, ekey, *context[1])
+            post(fqdn, "numpy", r, entry, bound, ekey, *context[1])
 
         return r

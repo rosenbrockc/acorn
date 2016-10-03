@@ -6,15 +6,29 @@ packages = {}
 configuration information for each package.
 """
 
+def config_dir(mkcustom=False):
+    """Returns the configuration directory for custom package settings.
+    """
+    from acorn.utility import reporoot
+    from os import path
+    alternate = path.join(path.abspath(path.expanduser("~")), ".acorn")
+    if not path.isdir(alternate) and not mkcustom:
+        return path.join(reporoot, "acorn", "config")
+    else:
+        if mkcustom:
+            from os import mkdir
+            mkdir(alternate)
+        return alternate
+
 def _package_path(package):
     """Returns the full path to the default package configuration file.
 
     Args:
     package (str): name of the python package to return a path for.    
     """
-    from acorn.utility import reporoot
     from os import path
-    return path.join(reporoot, "acorn", "config", "{}.cfg".format(package))
+    confdir = config_dir()
+    return path.join(confdir, "{}.cfg".format(package))
 
 def _read_single(parser, filepath):
     """Reads a single config file into the parser, silently failing if the file

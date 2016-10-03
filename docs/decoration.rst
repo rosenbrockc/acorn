@@ -23,8 +23,8 @@ The basic flow of the decoration is as follows for a new object:
    function. Extended objects keep a reference to the original, unextended
    object in the `__acornext__` special attribute.
 4. Proceed to decorate the object. For functions and methods, we wrap the object
-   using :func:`acorn.logging.decoration.callinglog` and then *overwrite* the
-   attribute in the parent object to point to the new function. The original
+   using :class:`acorn.logging.decoration.CallingDecorator` and then *overwrite*
+   the attribute in the parent object to point to the new function. The original
    function is copied to the `__acorn__` special attribute. If the methods were
    originally static or class methods, we use `staticmethod` and `classmethod`
    to change their behavior. Attributes from the original functions (such as

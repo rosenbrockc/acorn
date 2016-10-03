@@ -1,5 +1,10 @@
 # Revision History
 
+## Revision 0.0.6
+
+- Added `acrn.py` setup and configuration file. It allows the custom `~/.acorn` directory to be created with copies of all the default configuration files.
+- Added streamlining support for package methods that need to disable all acorn functionality for subsequent method calls. This is useful for high-level methods that need to be logged, but which call thousands of low-level methods that should be ignored (even though such methods are public and may need to be logged in other, direct calls).
+
 ## Revision 0.0.5
 
 - Debugged all unit tests for both python 2 and python 3.
