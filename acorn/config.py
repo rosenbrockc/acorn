@@ -10,9 +10,10 @@ def config_dir(mkcustom=False):
     """Returns the configuration directory for custom package settings.
     """
     from acorn.utility import reporoot
+    from acorn.base import testmode
     from os import path
     alternate = path.join(path.abspath(path.expanduser("~")), ".acorn")
-    if not path.isdir(alternate) and not mkcustom:
+    if testmode or (not path.isdir(alternate) and not mkcustom):
         return path.join(reporoot, "acorn", "config")
     else:
         if mkcustom:
@@ -68,9 +69,8 @@ def _descriptor_path(package):
     Args:
     package (str): name of the python package to return a path for.    
     """
-    from acorn.utility import reporoot
     from os import path
-    return path.join(reporoot, "acorn", "config", "{}.json".format(package))
+    return path.join(config_dir(), "{}.json".format(package))
 
 def descriptors(package):
     """Returns a dictionary of descriptors deserialized from JSON for the
