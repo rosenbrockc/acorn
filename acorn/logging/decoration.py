@@ -380,7 +380,7 @@ def _post_create(atdepth, entry, result):
         else: # pragma: no cover
             ekey = _tracker_str(cls)
 
-        msg.info("{}: {}".format(ekey, entry), 2)
+        msg.info("{}: {}".format(ekey, entry), 1)
         record(ekey, entry)
         
 def creationlog(base, package, stackdepth=_def_stackdepth):
@@ -395,11 +395,19 @@ def creationlog(base, package, stackdepth=_def_stackdepth):
     """   
     @staticmethod
     def wrapnew(cls, *argl, **argd):
-        global _atdepth_new, _cstack_new
-        if not decorating:
+        global _atdepth_new, _cstack_new, streamlining
+        origstream = None
+        if not (decorating or streamlining):
             entry, _atdepth_new = _pre_create(cls, _atdepth_new,
                                               stackdepth, *argl, **argd)
             _cstack_new.append(cls)
+
+            #See if we need to enable streamlining for this constructor.
+            fqdn = cls.__fqdn__
+            if fqdn in _streamlines and _streamlines[fqdn]:
+                msg.std("Streamlining {}.".format(fqdn), 2)
+                origstream = streamlining
+                streamlining = True
             
         try:
             if six.PY2:
@@ -437,7 +445,14 @@ def creationlog(base, package, stackdepth=_def_stackdepth):
         else: # pragma: no cover
             msg.err("Object creation failed for {}.".format(base.__name__))
 
-        if not decorating:
+        #If we don't disable streamlining for the original method that set
+        #it, then the post call would never be reached.
+        if origstream is not None:
+            #We avoid another dict lookup by checking whether we set the
+            #*local* origstream to something above.
+            streamlining = origstream
+            
+        if not (decorating or streamlining):
             _cstack_new.pop()
             if len(_cstack_new) == 0:
                 _atdepth_new = False
@@ -544,7 +559,7 @@ def _post_call(atdepth, package, fqdn, result, entry, bound, ekey, argl, argd):
         if filter_name(fqdn, package, "analyze"):
             entry["z"] = analyze(fqdn, result, argl, argd)
 
-        msg.info("{}: {}".format(ek, entry), 2)
+        msg.info("{}: {}".format(ek, entry), 1)
         # Before we return the result, let's first save this call to the
         # database so we have a record of it.
         record(ek, entry)
@@ -634,10 +649,15 @@ class CallingDecorator(object):
 
                 #See if we need to enable streamlining for this method call.
                 if fqdn in _streamlines and _streamlines[fqdn]:
+                    msg.std("Streamlining {}.".format(fqdn), 2)
                     origstream = streamlining
                     streamlining = True
                 
             result = self.func(*argl, **argd)
+            #NOTE: it may seem clever to enable the streamlining here as well,
+            #however, this ends up causing infinite recursion loops because
+            #methods like np.array need to end up being of the sub-classed
+            #ndarray type before the decorators will quit.
             if not decorating:
                 if fqdn in _callwraps:
                     result = _callwraps[fqdn](result)            
@@ -1068,12 +1088,19 @@ def _get_stack_depth(package, fqdn, defdepth=_def_stackdepth):
             for ofqdn in spack.options(secname):
                 _stack_config[package][ofqdn] = spack.getint(secname, ofqdn)
 
+    usedef = True
     if fqdn in _stack_config[package]:
-        return _stack_config[package][fqdn]
+        result = _stack_config[package][fqdn]
+        usedef = False
     elif "*" in _stack_config[package]: # pragma: no cover
-        return _stack_config[package]["*"]
+        result = _stack_config[package]["*"]
+        usedef = False
     else:
-        return defdepth
+        result = defdepth
+
+    if not usedef:
+        msg.gen("Using {} for {} stack depth.".format(result, fqdn), 2)
+    return result
 
 _decor_count = {"__builtin__": [0,0,0], "__main__": [0,0,0]}
 """dict: keys are package names, values are list [decorated, skipped, na] that

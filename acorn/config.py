@@ -5,7 +5,14 @@ packages = {}
 """dict: keys are package names, values are ConfigParser() instances with
 configuration information for each package.
 """
-
+from six.moves.configparser import ConfigParser
+class CaseConfigParser(ConfigParser):
+    """Case-sensitive configuration parser; we need to preseve the
+    case-sensitive names of FQDNs in the option strings.
+    """
+    def optionxform(self, optionstr):
+        return optionstr
+    
 def config_dir(mkcustom=False):
     """Returns the configuration directory for custom package settings.
     """
@@ -53,8 +60,7 @@ def settings(package, reload_=False):
     global packages
     if package not in packages or reload_:
         from os import path
-        from six.moves.configparser import ConfigParser            
-        result = ConfigParser()
+        result = CaseConfigParser()
         if package != "acorn":
             confpath = _package_path(package)
             _read_single(result, confpath)

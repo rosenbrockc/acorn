@@ -129,7 +129,7 @@ class InteractiveDecorator(object):
         }
         from acorn import msg
         record("def", entry)
-        msg.info(entry, 2)
+        msg.info(entry, 1)
         
     def _decorate(self, atype, n, o):
         """Decorates the specified object for automatic logging with acorn.

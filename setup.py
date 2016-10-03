@@ -18,7 +18,7 @@ except ImportError:
 
 from os import path
 setup(name='acorn',
-      version='0.0.9',
+      version='0.0.10',
       description='Automated computational research notebook.',
       long_description= "" if not path.isfile("README.md") else read_md('README.md'),
       author='Conrad W Rosenbrock',
@@ -39,7 +39,7 @@ setup(name='acorn',
       package_data={'acorn': ['config/*.cfg', 'config/*.json']},
       include_package_data=True,
       classifiers=[
-          'Development Status :: 3 - Alpha',
+          'Development Status :: 4 - Beta',
           'Intended Audience :: Science/Research',
           'Intended Audience :: Developers',
           'Natural Language :: English',
@@ -51,6 +51,5 @@ setup(name='acorn',
           'Programming Language :: Python :: 3',
           'Programming Language :: Python :: 3.4',
           'Topic :: Scientific/Engineering',
-          'Topic :: Scientific/Engineering :: Artificial Intelligence',
       ],
      )

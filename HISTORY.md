@@ -1,5 +1,9 @@
 # Revision History
 
+## Revision 0.0.10
+
+- Fixed streamlining for the `pandas` data frame plots by updating the config file. Also added streamlining support for constructors.
+
 ## Revision 0.0.9
 
 - Forgot to run unit tests before pushing the package. Fixes a simple typo.
