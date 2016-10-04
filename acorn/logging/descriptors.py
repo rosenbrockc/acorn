@@ -1,5 +1,5 @@
 """Methods for describing the objects within packages that are not instantiated
-by the user in the scope of __main__.
+by the user in the scope of `__main__`.
 """
 _package_desc = {}
 """dict: keys are package names, values are dictionaries with object FQDN as
@@ -10,12 +10,18 @@ describe the object.
 def describe(o):
     """Describes the object using developer-specified attributes specific to
     each main object type.
+
+    Returns:
+        dict: keys are specific attributes tailored to the specific object type,
+        though `fqdn` is common to all descriptions; values are the corresponding
+        attribute values which are *simple* types that can easily be serialized to
+        JSON.
     """
     #First, we need to determine the fqdn, so that we can lookup the format for
     #this object in the config file for the package.
     from inspect import getmodule
     from acorn.logging.decoration import _fqdn
-    fqdn = _fqdn(o)
+    fqdn = _fqdn(o, False)
     if fqdn is None:
         #This should not have happened; if the FQDN couldn't be determined, then
         #we should have never logged it.
@@ -141,6 +147,12 @@ def json_describe(o, fqdn, descriptor=None):
         descriptor (dict): keys are attributes of `o`; values are transform
           functions to apply to the attribute so that only a single value is
           returned.
+
+    Returns:
+        dict: keys are specific attributes tailored to the specific object type,
+        though `fqdn` is common to all descriptions; values are the corresponding
+        attribute values which are *simple* types that can easily be serialized to
+        JSON.
     """
     if descriptor is None or not isinstance(descriptor, dict):
         return {"fqdn": fqdn}

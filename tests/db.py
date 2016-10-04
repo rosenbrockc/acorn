@@ -27,11 +27,12 @@ def db_entries(package):
     tdb = dbs[("acorn", package)]
 
     entries = []
-    for uid, elist in tdb.entities:
-        entries.append((uid, elist[0]))
+    for uid, elist in tdb.entities.items():
+        for entry in elist:
+            entries.append((uid, entry))
 
     #Sort the entries by time stamp so that we can compare them properly.
-    return (sorted(entries, key=lambda e: e[1]["start"]), tdb.uuids)
+    return (sorted(entries, key=lambda e: e[1]["s"]), tdb.uuids)
 
 def decorate_check(package):
     """Checks to see if the decoration of `package` produced non-zero values for
@@ -40,6 +41,6 @@ def decorate_check(package):
     """    
     from acorn.logging.decoration import _decor_count
     assert package in _decor_count
-    assert _decor_count["package"][0] > 0
-    assert _decor_count["package"][1] > 0
-    assert _decor_count["package"][2] > 0
+    assert _decor_count[package][0] > 0
+    assert _decor_count[package][1] > 0
+    assert _decor_count[package][2] > 0

@@ -4,13 +4,48 @@ and complications with array slices etc. See
 http://docs.scipy.org/doc/numpy/user/basics.subclassing.html.
 """
 import numpy as np
+import six
+from acorn.logging.decoration import decorating, streamlining
+def _get_acorn(self, method, *items):
+    """Gets either a slice or an item from an array. Used for the __getitem__
+    and __getslice__ special methods of the sub-classed array.
+
+    Args:
+        method (str): on of ['slice', 'item'].
+    """
+    #IMPORTANT!! I lost two hours because the ndarray becomes unstable if you
+    #don't call the original method first. Somehow passing the array instance to
+    #other methods changed its internal representation and made it unusable by
+    #the original numpy functions. Putting them first makes it work.
+    
+    # Because we had to subclass numpy.ndarray, the original methods get
+    # stuck in an infinite loop (max. recursion depth exceeded errors). So,
+    # we instead grab the reference to the original ndarray object.
+    if method == "slice":
+        r = np.ndarray.__acornext__.__getslice__(self, *items)
+    else:
+        r = np.ndarray.__acornext__.__getitem__(self, *items)
+        
+    if not (decorating or streamlining):
+        from acorn.logging.decoration import (pre, post, _fqdn)
+        if method == "slice":
+            fqdn = "numpy.ndarray.__getslice__"
+        else:
+            fqdn = "numpy.ndarray.__getitem__"
+        preres = pre(fqdn, np.ndarray, 5, self, *items)
+        entry, bound, ekey = preres
+        # This method can trick acorn into thinking that it is a bound
+        # method. We want it to behave like it's not.
+        post(fqdn, "numpy", r, entry, np.ndarray, ekey)
+    return r 
+
 class ndarray(np.ndarray):
     """Sub-class of :class:`numpy.ndarray` so that we can implement logging for
     the instance method and special method calls of array objects.
 
     """
     def __new__(cls, input_array):
-        from acorn.logging.decoration import set_decorating, decorating
+        from acorn.logging.decoration import set_decorating
         odecor = decorating
         if not decorating:
             set_decorating(True)
@@ -35,25 +70,13 @@ class ndarray(np.ndarray):
         obj.__doc__ = np.ndarray.__doc__
         return obj
 
+    def __getitem__(self, *items):
+        return _get_acorn(self, "item", *items)
+    
     def __getslice__(self, *items):
         #Unfortunately, we have to implement the slicing here since it does not
-        #call any other methods that get decorated. We know that a slice is
-        #happening when the type of `self` and `obj` are the same and are equal
-        #to acorn.subclass_numpy.ndarray (instead of the regular numpy.ndarray).
-        from acorn.logging.decoration import (rt_decorate_pre,
-                                              rt_decorate_post,
-                                              _fqdn)
-        fqdn = "numpy.ndarray.__getslice__"
-        entry, bound, ekey = rt_decorate_pre(fqdn, None, 4, *((self,) + items))
-        
-        # Because we had to subclass numpy.ndarray, the original methods get
-        # stuck in an infinite loop (max. recursion depth exceeded errors). So,
-        # we instead grab the reference to the original ndarray object.
-        r = np.ndarray.__acornext__.__getslice__(self, *items)
-        # This method can trick acorn into thinking that it is a bound
-        # method. We want it to behave like it's not.
-        rt_decorate_post(fqdn, "numpy", r, entry, False, ekey)
-        return r        
+        #call any other methods that get decorated.
+        return _get_acorn(self, "slice", *items)
     
     def __array_finalize__(self, obj):
         if obj is None: return
@@ -61,11 +84,10 @@ class ndarray(np.ndarray):
 
     def __array_wrap__(self, outarr, context=None):
         if isinstance(context, tuple):
-            from acorn.logging.decoration import (rt_decorate_pre,
-                                                  rt_decorate_post,
-                                                  _fqdn)
+            from acorn.logging.decoration import (pre, post, _fqdn,
+                                                  _def_stackdepth)
             fqdn = _fqdn(context[0], False)
-            entry, bound, ekey = rt_decorate_pre(fqdn, None, 4, *context[1])
+            entry, bound, ekey = pre(fqdn, None, _def_stackdepth, *context[1])
 
         # Because we had to subclass numpy.ndarray, the original methods get
         # stuck in an infinite loop (max. recursion depth exceeded errors). So,
@@ -80,6 +102,6 @@ class ndarray(np.ndarray):
                 r = np.ndarray.__array_wrap__(self, outarr, context)
             
         if isinstance(context, tuple):
-            rt_decorate_post(fqdn, "numpy", r, entry, bound, ekey)
+            post(fqdn, "numpy", r, entry, bound, ekey, *context[1])
 
         return r

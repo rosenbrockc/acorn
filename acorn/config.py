@@ -5,6 +5,28 @@ packages = {}
 """dict: keys are package names, values are ConfigParser() instances with
 configuration information for each package.
 """
+from six.moves.configparser import ConfigParser
+class CaseConfigParser(ConfigParser):
+    """Case-sensitive configuration parser; we need to preseve the
+    case-sensitive names of FQDNs in the option strings.
+    """
+    def optionxform(self, optionstr):
+        return optionstr
+    
+def config_dir(mkcustom=False):
+    """Returns the configuration directory for custom package settings.
+    """
+    from acorn.utility import reporoot
+    from acorn.base import testmode
+    from os import path
+    alternate = path.join(path.abspath(path.expanduser("~")), ".acorn")
+    if testmode or (not path.isdir(alternate) and not mkcustom):
+        return path.join(reporoot, "acorn", "config")
+    else:
+        if mkcustom:
+            from os import mkdir
+            mkdir(alternate)
+        return alternate
 
 def _package_path(package):
     """Returns the full path to the default package configuration file.
@@ -12,9 +34,9 @@ def _package_path(package):
     Args:
     package (str): name of the python package to return a path for.    
     """
-    from acorn.utility import reporoot
     from os import path
-    return path.join(reporoot, "acorn", "config", "{}.cfg".format(package))
+    confdir = config_dir()
+    return path.join(confdir, "{}.cfg".format(package))
 
 def _read_single(parser, filepath):
     """Reads a single config file into the parser, silently failing if the file
@@ -38,13 +60,7 @@ def settings(package, reload_=False):
     global packages
     if package not in packages or reload_:
         from os import path
-        try:
-            from configparser import ConfigParser
-        except ImportError:
-            #py3 rename of the module to lower case.
-            from ConfigParser import ConfigParser
-            
-        result = ConfigParser()
+        result = CaseConfigParser()
         if package != "acorn":
             confpath = _package_path(package)
             _read_single(result, confpath)
@@ -59,9 +75,8 @@ def _descriptor_path(package):
     Args:
     package (str): name of the python package to return a path for.    
     """
-    from acorn.utility import reporoot
     from os import path
-    return path.join(reporoot, "acorn", "config", "{}.json".format(package))
+    return path.join(config_dir(), "{}.json".format(package))
 
 def descriptors(package):
     """Returns a dictionary of descriptors deserialized from JSON for the

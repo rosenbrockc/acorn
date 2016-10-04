@@ -2,8 +2,9 @@
 code lines and checking that the logged entries make sense.
 """
 import pytest
+import six
 @pytest.fixture(scope="module", autouse=True)
-def db(request, tmpdir):
+def acorndb(request, dbdir):
     """Creates a sub-directory in the temporary folder for the `pandas` package's
     database logging. Also sets the package and task to `acorn` and `pandas`
     respectively.
@@ -13,7 +14,7 @@ def db(request, tmpdir):
           files.
     """
     from db import db_init
-    return db_init("pandas", tmpdir)
+    return db_init("pandas", dbdir)
 
 def test_decorate():
     """Tests the decoration of the full numpy module. Since the module can
@@ -37,9 +38,9 @@ def test_readcsv():
     sentries, uuids = db_entries("pandas")
 
     uid, entry = sentries[-1]
-    assert entry["method"] == "pandas.io.parsers.read_csv"
+    assert entry["m"] == "pandas.io.parsers.read_csv"
     assert uid in uuids
-    assert entry["args"]["__"] == "../../tests/darwin.csv"
+    assert entry["a"]["_"] == ["tests/darwin.csv"]
 
     assert uuids[uid]["fqdn"] == "pandas.core.frame.DataFrame"
     assert "columns" in uuids[uid]
@@ -48,8 +49,8 @@ def test_readcsv():
     
     #So far, we have been checking the logging directly on the object. We need
     #to make sure that the data was actually writen to file.
-    from acorn.logging.database import TaskDB
-    tdb = TaskDB()
+    from acorn.logging.database import dbs
+    tdb = dbs[("acorn", "pandas")]
     assert len(tdb.entities) > 0
     assert len(tdb.uuids) > 0
 
@@ -62,9 +63,6 @@ def test_frametypes():
     """
     #Since we have already tested the writing to disk, we will now disable the
     #writing and just examine the in-memory collections.
-    from acorn import set_writeable
-    set_writeable(False)
-
     import acorn.pandas as pd
     ind = pd.Index([1./i for i in range(1, 11)], dtype=float)
     ser = pd.Series(range(2, 12), index=ind)
@@ -75,16 +73,17 @@ def test_frametypes():
     u0, e0 = sentries[-2]
     u1, e1 = sentries[-1]
 
-    assert e0["method"] == "Index.__new__"
-    assert e0["args"]["dtype"] == "float"
-    assert "len=10" in e0["args"]["__"]
-    assert "max=1.0" in e0["args"]["__"]
+    assert e0["m"] == "pandas.indexes.base.Index.__new__"
+    assert e0["a"]["dtype"] == "float"
+    assert "len=10" in e0["a"]["_"][0]
+    assert "max=1.0" in e0["a"]["_"][0]
 
-    assert e1["method"] == "Series.__new__"
-    assert e1["args"]["index"] == u0
-    assert "list" in e1["args"]["__"]
-    assert "len=10" in e1["args"]["__"]
-    assert len(e1["code"]) > 0
+    assert e1["m"] == "pandas.core.series.Series.__new__"
+    assert e1["a"]["index"] == u0
+    if six.PY2:
+        assert e1["a"]["_"] == ["<type 'list'> len=10 min=2 max=11"]
+    else:
+        assert e1["a"]["_"] == ["<class 'range'> len=10 min=2 max=11"]
     
 def test_instance():
     """Tests the instance methods :meth:`pandas.DataFrame.apply` using a lambda
@@ -97,7 +96,11 @@ def test_instance():
     lambfun = lambda x: x**2
 
     import acorn.pandas as pd
-    pdf = pd.DataFrame(range(15,25))
+    import acorn.numpy as np
+    if six.PY2:
+        pdf = pd.DataFrame(range(15,25))
+    else:
+        pdf = pd.DataFrame(data=list(range(15,25)))
     pdf.apply(lambfun)
     pdf.apply(np.sqrt)
     pdf.describe()
@@ -110,26 +113,30 @@ def test_instance():
     u2, e2 = sentries[-2] #sqrt apply
     u3, e3 = sentries[-1] #describe
 
-    assert e0["method"] == "DataFrame.__new__"
-    assert "len=10" in e0["args"]["__"][0]
-    assert "max=24" in e0["args"]["__"][0]
+    #pandas in python 3 requires us to name the data keyword argument; it
+    #doesn't automatically splice it into the first position.
+    assert e0["m"] == "pandas.core.frame.DataFrame.__new__"
+    if six.PY2:
+        assert e0["a"]["_"] == ["<type 'list'> len=10 min=15 max=24"]
+    else:
+        assert e0["a"]["data"] == "<class 'list'> len=10 min=15 max=24"
     
-    assert e1["method"] == "pandas.core.frame.apply"
-    assert e1["args"]["__"][0] == u0
-    assert e1["args"]["__"][1] == "lambda (x)"
+    assert e1["m"] == "pandas.core.frame.apply"
+    assert e1["a"]["_"][0] == u0
+    assert e1["a"]["_"][1] == "lambda (x)"
     #For instance methods, the uuid keys in the entries dict are those of the
     #instance that the method was called on.
     assert u1 == u0
-    #We don't really do any tests with the timing; so we might as well make sure
-    #that it is being saved.
-    assert "elapsed" in e1
-    assert isinstance(e1["elapsed"], float)
 
-    assert e2["method"] == "pandas.core.frame.apply"
-    assert e2["args"]["__"][0] == u0
-    assert e2["args"]["__"][1] == "numpy.sqrt"
+    assert e2["m"] == "pandas.core.frame.apply"
+    assert e2["a"]["_"][0] == u0
+    #Unfortunately, the order in which members of a package is returned is not
+    #always deterministic, so numpy.sqrt may be first picked up by
+    #numpy.matlib.sqrt.
+    assert (e2["a"]["_"][1] == "numpy.sqrt" or
+            e2["a"]["_"][1] == "numpy.matlib.sqrt")
     assert u2 == u0
 
-    assert e3["method"] == "pandas.core.generic.describe"
-    assert e3["args"]["__"][0] == u0
+    assert e3["m"] == "pandas.core.generic.describe"
+    assert e3["a"]["_"][0] == u0
     assert u3 == u0

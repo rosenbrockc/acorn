@@ -1,7 +1,7 @@
 argparse
 termcolor
+six
 numpy
-matplotlib
 scipy
 pandas
 scikit-learn

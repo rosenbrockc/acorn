@@ -83,7 +83,7 @@ def cleanup():
             #Force the database save, even if the time hasn't elapsed yet.
             db.save(True)
             success.append(dbname)
-        except:
+        except: # pragma: no cover
             import sys, traceback
             xcls, xerr = sys.exc_info()[0:2]
             failed[dbname] = traceback.format_tb(sys.exc_info()[2])
@@ -91,7 +91,7 @@ def cleanup():
     for sdb in success:
         if writeable:
             msg.okay("Project {0}.{1} saved successfully.".format(*sdb), 0)
-    for fdb, tb in failed.items():
+    for fdb, tb in failed.items(): # pragma: no cover
         msg.err("Project {1}.{2} save failed:\n{0}".format(tb, *fdb),
                 prefix=False)
     
@@ -109,9 +109,15 @@ def tracker(obj):
     import types as typ
     import numpy as anp
     global oids, uuids
-    untracked = (basestring, int, long, float, complex)
+    import six
+    from inspect import isclass
+    untracked = (six.string_types, six.integer_types, float,
+                 complex, six.text_type)
+
     semitrack = (list, dict, set, tuple)
-    
+    if six.PY3: # pragma: no cover
+        semitrack = semitrack + (range, filter, map)
+        
     if (isinstance(obj, semitrack) and
         all([isinstance(t, untracked) for t in obj])):
         if len(obj) > 0:
@@ -125,6 +131,8 @@ def tracker(obj):
         #dict or tuple; this is necessary so that we can keep track of
         #subsequent calls made with unpacked parts of the tuple.
         return [tracker(o) for o in obj]
+    elif isinstance(obj, slice):
+        return "slice({}, {}, {})".format(obj.start, obj.stop, obj.step)
     elif type(obj) is type:
         return obj.__name__
     elif type(obj) is typ.LambdaType:
@@ -133,8 +141,12 @@ def tracker(obj):
             #decorated.
             return obj.__fqdn__
         else:
-            return "lambda ({})".format(', '.join(obj.func_code.co_varnames))
-    elif type(obj) in [typ.FunctionType, typ.MethodType]:
+            if six.PY2:
+                _code = obj.func_code
+            else: # pragma: no cover
+                _code = obj.__code__
+            return "lambda ({})".format(', '.join(_code.co_varnames))
+    elif type(obj) in [typ.FunctionType, typ.MethodType]: # pragma: no cover
         return obj.__name__
     elif type(obj) is anp.ufunc:
         return "numpy.{}".format(obj.__name__)
@@ -165,7 +177,7 @@ def _dbdir():
         if (config.has_section("database") and
             config.has_option("database", "folder")):
             dbdir = config.get("database", "folder")
-        else:
+        else: # pragma: no cover
             raise ValueError("The folder to save DBs in must be configured"
                              "  in 'acorn.cfg'")
 
@@ -177,6 +189,31 @@ def _dbdir():
         mkdir(dbdir)
         
     return dbdir
+
+def _json_clean(d):
+    """Cleans the specified python `dict` by converting any tuple keys to
+    strings so that they can be serialized by JSON.
+
+    Args:
+        d (dict): python dictionary to clean up.
+
+    Returns:
+        dict: cleaned-up dictionary.
+    """
+    result = {}
+    compkeys = {}
+    for k, v in d.items():
+        if not isinstance(k, tuple):
+            result[k] = v
+        else:
+            #v is a list of entries for instance methods/constructors on the
+            #UUID of the key. Instead of using the composite tuple keys, we
+            #switch them for a string using the 
+            key = "c.{}".format(id(k))
+            result[key] = v
+            compkeys[key] = k
+
+    return (result, compkeys)
 
 def record(ekey, entry):
     """Records the specified entry to the key-value store under the specified
@@ -221,7 +258,7 @@ class TaskDB(object):
             dbdir = _dbdir()
 
         from os import path
-        if project == "default" and task == "default":
+        if project == "default" and task == "default": # pragma: no cover
             msg.warn("The project and task are using default values. "
                      "Use :meth:`acorn.set_task` to change them.")
         self.dbpath = path.join(dbdir, "{}.{}.json".format(project, task))
@@ -257,12 +294,22 @@ class TaskDB(object):
 
         #We also need to make sure we have uuids and origin information stored
         #for any uuids present in the parameter string.
-        if entry["returns"] is not None:
-            uid = entry["returns"]
+        from uuid import UUID
+        uid = None
+        if entry["r"] is not None:
+            uid = entry["r"]
+        elif isinstance(ekey, str):
+            #For many methods we don't duplicate the UUID in the returns part
+            #because it wastes space. In those cases, the ekey is a UUID.
+            try:
+                uid = str(UUID(ekey))
+            except ValueError: # pragma: no cover
+                pass
+
+        if uid is not None and isinstance(uid, str):
             self._log_uuid(uid)
 
-        from uuid import UUID
-        for larg in entry["args"]["__"]:
+        for larg in entry["a"]["_"]:
             #We use the constructor to determine if the format of the argument
             #is a valid UUID; if it isn't then we catch the error and keep
             #going.
@@ -270,7 +317,7 @@ class TaskDB(object):
                 continue
             
             try:
-                uid = UUID(larg)
+                uid = str(UUID(larg))
                 self._log_uuid(uid)
             except ValueError:
                 #This was obviously not a UUID, we don't need to worry about it,
@@ -278,17 +325,18 @@ class TaskDB(object):
                 pass
 
         #We also need to handle the keyword arguments; these are keyed by name.
-        for key, karg in entry["args"].items():
-            if key == "__" or not isinstance(karg, str):
+        for key, karg in entry["a"].items():
+            if key == "_" or not isinstance(karg, str):
                 #Skip the positional arguments since we already handled them.
                 continue
             try:
-                uid = UUID(karg)
+                uid = str(UUID(karg))
                 self._log_uuid(uid)
             except ValueError:
                 pass            
 
-    def _get_option(self, option, default=None, cast=None):
+    @staticmethod
+    def get_option(option, default=None, cast=None):
         """Returns the option value for the specified acorn database option.
         """
         from acorn.config import settings
@@ -332,7 +380,7 @@ class TaskDB(object):
         # single time a method is called. Instead, we only save them at the
         # frequency specified in the global settings file.
         from datetime import datetime
-        savefreq = self._get_option("savefreq", 2, int)
+        savefreq = TaskDB.get_option("savefreq", 2, int)
         
         if self.lastsave is not None:
             delta = (datetime.fromtimestamp(time()) -
@@ -351,13 +399,16 @@ class TaskDB(object):
 
             import json
             try:
-                jdb = {"entities": self.entities,
+                entities, compkeys = _json_clean(self.entities)
+                jdb = {"entities": entities,
+                       "compkeys": compkeys,
                        "uuids": self.uuids}
                 with open(self.dbpath, 'w') as f:
                     json.dump(jdb, f)
-            except:
+            except: # pragma: no cover
                 from acorn.msg import err
                 import sys
+                raise
                 err("{}: {}".format(*sys.exc_info()[0:2]))
 
             self.lastsave = time()
@@ -391,11 +442,4 @@ class Instance(object):
         #already have a paper trail that shows exactly how it was done; but for
         #these, we have to rely on human-specified descriptions.
         from acorn.logging.descriptors import describe
-        semitrack = (list, dict, set, tuple)
-        if isinstance(self.obj, semitrack):
-            if isinstance(self.obj, (list, tuple, set)):
-                return [describe(o) for o in self.obj]
-            elif isinstance(self.obj, dict):
-                return {k: describe(v) for k, v in self.obj.items()}
-        else:
-            return describe(self.obj)
+        return describe(self.obj)

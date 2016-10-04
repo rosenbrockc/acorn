@@ -2,8 +2,9 @@
 code lines and checking that the logged entries make sense.
 """
 import pytest
+import six
 @pytest.fixture(scope="module", autouse=True)
-def db(request, tmpdir):
+def acorndb(request, dbdir):
     """Creates a sub-directory in the temporary folder for the `numpy` package's
     database logging. Also sets the package and task to `acorn` and `numpy`
     respectively.
@@ -13,7 +14,7 @@ def db(request, tmpdir):
           files.
     """
     from db import db_init
-    return db_init("numpy", tmpdir)
+    return db_init("numpy", dbdir)
 
 @pytest.fixture(scope="module")
 def a(request):
@@ -36,6 +37,9 @@ def test_decorate():
     import acorn.numpy as np
     from db import decorate_check
     decorate_check("numpy")
+
+    from acorn.importer import reload_cache
+    reload_cache()
 
 _uuid_a = None
 """str: uuid of the fixture 'a' so that we can make sure it is referenced
@@ -61,22 +65,25 @@ def test_arraylike(a):
     assert ("acorn", "numpy") in dbs
     sentries, uuids = db_entries("numpy")
     
-    assert sentries[0][1]["method"] == "numpy.core.multiarray.array"
-    assert sentries[1][1]["method"] == "numpy.core.multiarray.zeros"
-    assert sentries[2][1]["method"] == "numpy.core.multiarray.empty"
+    assert sentries[0][1]["m"] == "numpy.core.multiarray.array"
+    assert sentries[1][1]["m"] == "numpy.core.multiarray.zeros"
+    assert sentries[2][1]["m"] == "numpy.core.multiarray.empty"
 
     global _uuid_a
     _uuid_a = sentries[0][0]
-    arrayarg = sentries[0][1]["args"]["__"][0]
+    arrayarg = sentries[0][1]["a"]["_"][0]
     assert "len=10" in arrayarg
-    assert "<type 'list'>" in arrayarg
-
-    zerosarg = sentries[1][1]["args"]["__"]
+    if six.PY2:
+        assert "<type 'list'>" in arrayarg
+    else:
+        assert "<class 'range'>" in arrayarg
+    
+    zerosarg = sentries[1][1]["a"]["_"]
     assert "len=2" in zerosarg[0]
-    assert "<type 'tuple'>" in zerosarg[0]
+    assert "'tuple'>" in zerosarg[0]
     assert zerosarg[1] == "int"
 
-    emptyarg = sentries[1][1]["args"]["__"]
+    emptyarg = sentries[2][1]["a"]["_"]
     assert emptyarg[0] == 7
     assert emptyarg[1] == "complex"
 
@@ -85,7 +92,7 @@ def test_arraylike(a):
         #For non-instance methods, the returns uuid should be what we are
         #indexing under, so that the lookups are easier on the presentation
         #layer.
-        assert entry["returns"] is None
+        assert entry["r"] is None
 
     #So far, we have been checking the logging directly on the object. We need
     #to make sure that the data was actually writen to file.
@@ -99,9 +106,6 @@ def test_linspace():
     """
     #Since we have already tested the writing to disk, we will now disable the
     #writing and just examine the in-memory collections.
-    from acorn import set_writeable
-    set_writeable(False)
-    
     import acorn.numpy as np
     lsp = np.linspace(0, 1, 25)
 
@@ -111,16 +115,13 @@ def test_linspace():
     #Because the tests are executed in the order they are found in this file, we
     #can just look at the *last* entry in the sorted list.
     uid, entry = sentries[-1]
-    assert entry["method"] == "numpy.core.function_base.linspace"
-    assert entry["args"]["__"] == [0, 1, 25]
-    assert entry["returns"] is None
+    assert entry["m"] == "numpy.core.function_base.linspace"
+    assert entry["a"]["_"] == [0, 1, 25]
+    assert entry["r"] is None
 
 def test_instance(a):
     """Tests :class:`numpy.ndarray` instance method call logging.
     """
-    from acorn import set_writeable
-    set_writeable(False)
-    
     import acorn.numpy as np
     b = a.flatten()
     c = b.reshape((5,2))
@@ -132,59 +133,69 @@ def test_instance(a):
     #can just look at the *last* entry in the sorted list.
     uidb, entryb = sentries[-2]
     uidc, entryc = sentries[-1]
-    
-    assert entryb["method"] == "numpy.ndarray.flatten"
-    assert entryb["args"]["__"] == [uidb]
-    assert entryb["code"] > 0
 
-    assert entryc["method"] == "numpy.ndarray.reshape"
-    assert entryc["args"]["__"] == [uidb, "<type 'tuple'> len=2 min=2 max=5"]
-    assert len(entryc["code"] > 0)
+    assert entryb["m"] == "numpy.ndarray.flatten"
+    assert entryb["a"]["_"] == [_uuid_a]
+    urb = entryb["r"]
+
+    assert entryc["m"] == "numpy.ndarray.reshape"
+    if six.PY2:
+        assert entryc["a"]["_"] == [urb, "<type 'tuple'> len=2 min=2 max=5"]
+    else:
+        assert entryc["a"]["_"] == [urb, "<class 'tuple'> len=2 min=2 max=5"]
     
-def test_special():
+def test_special(a):
     """Tests :class:`numpy.ndarray` special functions such as __mul__, __div__,
     etc. Also tests the array slicing.
     """
-    from acorn import set_writeable
-    set_writeable(False)
-    
     import acorn.numpy as np
     b = 2*a
     c = a[2:6]/3
-    a *= 2
+    d = a.copy()
+    d *= 2
 
     from db import db_entries
     sentries, uuids = db_entries("numpy")
 
     #Because the tests are executed in the order they are found in this file, we
     #can just look at the *last* entries in the sorted list.
-    uidb, entryb = sentries[-4]
-    uidc, entryc = sentries[-3]
-    uidd, entryd = sentries[-2]
-    uide, entrye = sentries[-1]
-    
-    assert entryb["method"] == "numpy.ufunc.multiply"
-    assert entryb["args"]["__"] == [2, _uuid_a]
-    assert entryb["code"] > 0
+    uidb, entryb = sentries[-5]
+    uidc, entryc = sentries[-4]
+    uidd, entryd = sentries[-3]
+    uide, entrye = sentries[-2]
+    uidf, entryf = sentries[-1]
+
+    assert entryb["m"] == "numpy.ufunc.multiply"
+    assert entryb["a"]["_"] == [2, _uuid_a]
 
     #We have a getslice and a divide in the variable `c`.
-    assert entryc["method"] == "numpy.ndarray.__getslice__"
-    assert entryc["args"]["__"] == [_uuid_a, 2, 6]
-    assert len(entryc["code"] > 0)
+    if six.PY2:
+        assert entryc["m"] == "numpy.ndarray.__getslice__"
+        assert entryc["a"]["_"] == [_uuid_a, 2, 6]
+    else:
+        #__getslice__ was deprecated by Py3.
+        assert entryc["m"] == "numpy.ndarray.__getitem__"
+        assert entryc["a"]["_"] == [_uuid_a, "slice(2, 6, None)"]
+    urc = entryc["r"]
 
-    assert entryd["method"] == "numpy.ufunc.divide"
-    assert entryd["args"]["__"] ==  [uidc, 3]
+    if six.PY2:
+        assert entryd["m"] == "numpy.ufunc.divide"
+    else:
+        #divide was changed by default to be true_divide in Py3.
+        assert entryd["m"] == "numpy.ufunc.true_divide"
+    assert entryd["a"]["_"] ==  [urc, 3]
 
-    assert entrye["method"] == "numpy.ufunc.multiply"
-    assert uide == _uuid_a
-    assert entrye["args"]["__"] == [_uuid_a, 2, _uuid_a]
+    assert entrye["m"] == "numpy.ndarray.copy"
+    assert entrye["a"]["_"] == [_uuid_a]
+    ure = entrye["r"]
+
+    assert entryf["m"] == "numpy.ufunc.multiply"
+    assert uidf == ure
+    assert entryf["a"]["_"] == [ure, 2, ure]
     
 def test_static(a):
     """Tests the numpy static methods to make sure that they also log correctly.
     """
-    from acorn import set_writeable
-    set_writeable(False)
-    
     import acorn.numpy as np
     b = np.multiply(a, 2)
     c = np.ndarray.reshape(a.flatten(), (5,2))
@@ -196,37 +207,48 @@ def test_static(a):
 
     #Because the tests are executed in the order they are found in this file, we
     #can just look at the *last* entries in the sorted list.
-    uidb, entryb = sentries[-4]
-    uidc, entryc = sentries[-3]
-    uidc2, entryc2 = sentries[-2]
-    uide, entrye = sentries[-1]
-    
-    assert entryb["method"] == "numpy.ufunc.multiply"
-    assert entryb["args"]["__"] == [_uuid_a, 2]
-    assert entryb["code"] > 0
+    uidb, entryb = sentries[-5] #multiply
+    uidc, entryc = sentries[-4] #flatten
+    uidc2, entryc2 = sentries[-3] #reshape
+    uidd, entryd = sentries[-2] #asarray
+    uide, entrye = sentries[-1] #delete
 
-    assert entryc["method"] == "numpy.ndarray.flatten"
-    assert entryc["args"]["__"] == [_uuid_a]
-    assert entryc["code"] > 0
-    assert entryc["start"] > 0
-    
-    assert entryc2["method"] == "numpy.ndarray.reshape"
-    assert entryc2["args"]["__"] == [uidc, "<type 'tuple'> len=2 min=2 max=5"]
-    assert entryc2["code"] > 0
+    assert entryb["m"] == "numpy.multiply"
+    assert entryb["a"]["_"] == [_uuid_a, 2]
 
-    assert entrye["method"] == "numpy.lib.function_base.delete"
-    assert entrye["args"]["__"] == [uidb, 2, 0]
-    assert entrye["code"] > 0
-    assert entrye["elapsed"] > 0    
+    #Even though we are explicitly calling the static ndarray.flatten, it has
+    #the same net effect as an instance method call on the first array
+    #argument. As such, it is treated as an instance method
+    assert entryc["m"] == "numpy.ndarray.flatten"
+    assert entryc["a"]["_"] == [_uuid_a]
+    assert entryc["s"] > 0
+    ucr = entryc["r"]
+
+    assert entryc2["m"] == "numpy.ndarray.reshape"
+    if six.PY2:
+        assert entryc2["a"]["_"] == [ucr, "<type 'tuple'> len=2 min=2 max=5"]
+    else:
+        assert entryc2["a"]["_"] == [ucr, "<class 'tuple'> len=2 min=2 max=5"]
+
+    assert entryd["m"] == "numpy.core.numeric.asarray"
+    if six.PY2:
+        assert entryd["a"]["_"] == ["<type 'list'> len=10 min=0 max=9"]
+    else:
+        assert entryd["a"]["_"] == ["<class 'range'> len=10 min=0 max=9"]
+
+    assert entrye["m"] == "numpy.lib.function_base.delete"
+    assert entrye["a"]["_"] == [uidb, 2, 0]
 
 def test_scalar():
     """Makes sure that ufuncs return scalar values for array operations.
     """
+    import acorn.numpy as np
     a1 = np.array(0.)
     a2 = np.array(0.025)
-    assert np.isscalar(np.sum(a1, a2))
+    assert np.isscalar(np.sum((a1, a2)))
 
 def test_array():
     """Makes sure that array functions which are *not* ufuncs return arrays.
     """
-    assert isinstance(np.squeeze(np.array(0.0), 0))
+    import acorn.numpy as np
+    assert isinstance(np.squeeze(np.array(0.0), 0), np.ndarray)

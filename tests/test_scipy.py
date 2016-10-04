@@ -4,8 +4,9 @@ code lines and checking that the logged entries make sense.
 #Presently, I only test the interpolation because I use it most frequently; as
 #bugs are uncovered and fixed, we can add additional tests here.
 import pytest
+import six
 @pytest.fixture(scope="module", autouse=True)
-def db(request, tmpdir):
+def acorndb(request, dbdir):
     """Creates a sub-directory in the temporary folder for the `scipy` package's
     database logging. Also sets the package and task to `acorn` and `scipy`
     respectively.
@@ -15,7 +16,7 @@ def db(request, tmpdir):
           files.
     """
     from db import db_init
-    return db_init("scipy", tmpdir)
+    return db_init("scipy", dbdir)
 
 def test_decorate():
     """Tests the decoration of the full scipy module. Since the module can
@@ -25,11 +26,10 @@ def test_decorate():
     """
     import acorn.scipy as sp
     from db import decorate_check
+    from acorn import set_writeable
+    set_writeable(False)    
     decorate_check("scipy")
 
-#We have to skip this now because of issue #2; otherwise the tests will not
-#pass...
-@pytest.mark.skip(reason="Issue #2")
 def test_interpolate():
     """Tests spline interpolation and hilbert transform for scipy.
     """
@@ -45,28 +45,26 @@ def test_interpolate():
     from db import db_entries
     sentries, uuids = db_entries("scipy")
 
-    u0, e0 = sentries[-4] #array constructor
-    u1, e1 = sentries[-3] #hilbert transform
-    u2, e2 = sentries[-2] #spline representation
-    u3, e3 = sentries[-1] #spline evaluation
+    u0, e0 = sentries[-5] #array constructor
+    u1, e1 = sentries[-4] #multiplication by 2
+    u2, e2 = sentries[-3] #hilbert transform
+    u3, e3 = sentries[-2] #spline representation
+    u4, e4 = sentries[-1] #spline evaluation
 
-    assert e0["method"] == "numpy.core.multiarray.array"
-    assert u0 == e0["returns"]
-    assert "list" in e0["args"]["__"][0]
-    assert "len=15" in e0["args"]["__"][0]
+    assert e0["m"] == "numpy.core.multiarray.array"
+    if six.PY2:
+        assert e0["a"]["_"] == ["<type 'list'> len=15 min=0 max=14"]
+    else:
+        assert e0["a"]["_"] == ["<class 'range'> len=15 min=0 max=14"]
 
-    assert e1["method"] == "scipy.fftpack.pseudo_diffs.hilbert"
-    assert u1 == e1["returns"]
-    assert e1["args"]["__"][0] == u0
-    assert "elapsed" in e1
-    assert isinstance(e1["elapsed"], float)
+    assert e1["m"] == "numpy.ufunc.multiply"
+    assert e1["a"]["_"] == [2, u0]
+    
+    assert e2["m"] == "scipy.fftpack.pseudo_diffs.hilbert"
+    assert e2["a"]["_"] == [u1]
 
-    assert e2["method"] == "scipy.interpolate.fitpack.splrep"
-    assert u2 == e2["returns"]
-    assert e2["args"]["__"][0] == u0
-    assert e0["args"]["__"][1] == u1
+    assert e3["m"] == "scipy.interpolate.fitpack.splrep"
+    assert e3["a"]["_"] == [u1, u2]
 
-    assert e3["method"] == "scipy.interpolate.fitpack.splev"
-    assert u3 == e3["returns"]
-    assert e3["args"]["__"][0] == u0
-    assert e3["args"]["__"][1] == u2
+    assert e4["m"] == "scipy.interpolate.fitpack.splev"
+    assert e4["a"]["_"] == [u1, u3]
