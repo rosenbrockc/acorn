@@ -1158,7 +1158,7 @@ def decorate_obj(parent, n, o, otype, recurse=True, redecorate=False):
                 clog = cdecor(fqdn, package, parent, d)
             else:
                 clog = cdecor(fqdn, package, None, d)
-            
+            msg.std("Setting decorator on {}.".format(fqdn), 4)
             _safe_setattr(clog, "__acornext__", o)
             _update_attrs(clog, o)
             if ((hasattr(o, "im_self") and o.im_self is parent)):
