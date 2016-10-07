@@ -214,8 +214,14 @@ acorn.formatCall = function(entry, uuids, uuid) {
     else if (instance == null) {
 	returns = acorn.getUuidDetails(uuids, uuid);
     }
+    var elapsed = null;
+    if ("e" in entry) {
+	elapsed = entry.e*1000;
+    }
+    
     var result = {"method": method, "args": args, "timestamp": entry.s,
-		  "instance": instance, "returns": returns};
+		  "instance": instance, "returns": returns, "code": entry.c,
+		  "elapsed": elapsed};
     return result;
 };
 /** Formats the specified db entity entry for display in the notebook.
@@ -236,7 +242,9 @@ acorn.formatEntry = function(entries, uuids, uuid) {
 	    callarr.push(call);
 	}
     } else {
-	callarr.push({"method": null, "args": null, "timestamp": null});
+	callarr.push({"method": null, "args": null, "timestamp": null,
+		      "instance": null, "returns": null, "code": null,
+		      "elapsed": null});
     };
     return callarr;
 };
