@@ -107,7 +107,6 @@ def tracker(obj):
           that object; else None.
     """
     import types as typ
-    import numpy as anp
     global oids, uuids
     import six
     from inspect import isclass
@@ -155,8 +154,6 @@ def tracker(obj):
             return "lambda ({})".format(', '.join(_code.co_varnames))
     elif type(obj) in [typ.FunctionType, typ.MethodType]: # pragma: no cover
         return obj.__name__
-    elif type(obj) is anp.ufunc:
-        return "numpy.{}".format(obj.__name__)
     elif not isinstance(obj, untracked):
         #For many of the numpy/scipy methods, the result is a tuple of numpy
         #arrays. In that case, we should maintain the tuple structure for

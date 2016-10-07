@@ -122,27 +122,27 @@ def _update_attrs(nobj, oobj, exceptions=None, acornext=False):
         if hasattr(nobj, a):
             #We don't want to overwrite something that acorn has already done.
             continue
-        if a in ["__class__", "__code__", "__closure__"]:
+        if a in ["__class__", "__code__", "__closure__"]:# pragma: no cover
             #These attributes are not writeable by design.
             continue
         
         if exceptions is None or a not in exceptions:
             try:
                 setattr(nobj, a, v)
-            except TypeError:
+            except TypeError:# pragma: no cover
                 #Some of the built-in types have __class__ attributes (for
                 #example) that we can't set on a function type. This catches
                 #that case and any others.
                 emsg = "_update_attrs (type): {}.{} => {}"
                 msg.err(emsg.format(nobj, a, target), 2)
                 pass
-            except AttributeError:
+            except AttributeError:# pragma: no cover
                 #Probably a read-only attribute that we are trying to set. Just
                 #ignore it.
                 emsg = "_update_attrs (attr): {}.{} => {}"
                 msg.err(emsg.format(nobj, a, target), 2)
                 pass
-            except ValueError:
+            except ValueError:# pragma: no cover
                 emsg = "_update_attrs (value): {}.{} => {}"
                 msg.err(emsg.format(nobj, a, target), 2)
                 success = False
@@ -415,6 +415,8 @@ def creationlog(base, package, stackdepth=_def_stackdepth):
             #See if we need to enable streamlining for this constructor.
             fqdn = cls.__fqdn__
             if fqdn in _streamlines and _streamlines[fqdn]:
+                #We only use streamlining for the plotting routines at the
+                #moment, so it doesn't get hit by the unit tests.
                 msg.std("Streamlining {}.".format(fqdn), 2)
                 origstream = streamlining
                 streamlining = True

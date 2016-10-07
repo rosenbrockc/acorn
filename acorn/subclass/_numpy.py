@@ -54,12 +54,12 @@ class ndarray(np.ndarray):
         if isinstance(input_array, np.ndarray):
             if hasattr(np.ndarray.view, "__acorn__"):
                 obj = np.ndarray.view.__acorn__(input_array, cls)
-            else:
+            else:# pragma: no cover
                 obj = np.ndarray.view(input_array, cls)
         else:
             if hasattr(np.asarray, "__acorn__"):
                 obj = np.asarray.__acorn__(input_array).view(cls)
-            else:
+            else:# pragma: no cover
                 obj = np.asarray(input_array).view(cls)
 
         #We need to make sure that we don't set decor to be False when it was
@@ -98,7 +98,7 @@ class ndarray(np.ndarray):
         else:
             if hasattr(np.ndarray, "__acornext__"):
                 r = np.ndarray.__acornext__.__array_wrap__(self, outarr, context)
-            else:
+            else:# pragma: no cover
                 r = np.ndarray.__array_wrap__(self, outarr, context)
             
         if isinstance(context, tuple):
