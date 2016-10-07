@@ -140,3 +140,34 @@ def test_instance():
     assert e3["m"] == "pandas.core.generic.describe"
     assert e3["a"]["_"][0] == u0
     assert u3 == u0
+
+def test_gets():
+    """Tests the pandas.get and pandas.__getitem__ logging.
+    """
+    import acorn.pandas as pd
+    from os import path
+    csdf=pd.read_csv(path.join("tests", "darwin.csv"))
+    csdf.get(["y"])
+    csdf[["Unnamed: 0", "y"]]
+    
+    from db import db_entries
+    sentries, uuids = db_entries("pandas")
+
+    u0, e0 = sentries[-3] #Constructor
+    u1, e1 = sentries[-2] #static get
+    u2, e2 = sentries[-1] #getitem
+
+    assert e0["m"] == "pandas.io.parsers.read_csv"
+    assert e0["a"]["_"] == ["tests/darwin.csv"]
+    
+    assert e1["m"] == "pandas.core.generic.get"
+    if six.PY2:
+        assert e1["a"]["_"] == [u0, "<type 'list'> len=1 min=y max=y"]
+    else:
+        assert e1["a"]["_"] == [u0, "<class 'list'> len=1 min=y max=y"]
+
+    assert e2["m"] == "pandas.core.frame.__getitem__"
+    if six.PY2:
+        assert e2["a"]["_"] == [u0, "<type 'list'> len=2 min=Unnamed: 0 max=y"]
+    else:
+        assert e2["a"]["_"] == [u0, "<class 'list'> len=2 min=Unnamed: 0 max=y"]

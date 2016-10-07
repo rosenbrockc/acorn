@@ -20,6 +20,7 @@ decorate(asp)
 #members point to the *undecorated* numpy objects. Here we just ensure that all
 #of scipy is decorated.
 from acorn.logging.decoration import postfix
+import acorn.numpy
 postfix(asp)
 
 #Return the decoration to what it was before.

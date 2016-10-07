@@ -1,0 +1,32 @@
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Html5 local file api tut</title>
+  <script type="text/javascript"
+	  src="https://code.jquery.com/jquery-2.1.1.min.js"></script>
+  <script src="http://underscorejs.org/underscore-min.js"></script>
+  <script type="text/javascript" src="load.js"></script>
+  <script type="text/javascript" src="../../js/acorn.js"></script>
+  <script>
+    window.onload = loadfs
+  </script>
+</head>
+<body>
+<div class="container">
+    <div class="row" >
+        <div class="large-12 columns"  >
+                <h1>Load A Database</h1>
+                <input type="file" id="acorndb">
+                <div id="preview" >
+		  
+                </div>
+		<div id="data" class="large-8 columns">
+                    <h2 id="name"></h2>
+                    <p id="size"></p>
+                    <p id="type"></p>
+                </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

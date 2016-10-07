@@ -60,9 +60,34 @@ Each package can have the following options sections configured:
   `ndarray` so we add `numpy.core.multiarray.zeros=numpy.ndarray` as an option
   to make sure that the result of :func:`numpy.zeros` is always passed through
   the constructor of our `ndarray` subclass.
+- **[logging]**: it is possible for an object to be tracked, but *not*
+  logged. This makes streamlining work for some methods so that common
+  operations can be accelerated without producing log entries. Options are FQDNs
+  with a `0` or `1` specifying whether it should be logged or not.
 - **[logging.depth]**: specifies the FQDN of certain objects that should be
   logged at a different stack depth than the defaults configured by `acorn`.
+- **[streamline]**: options are FQDN with either `0` or `1` as the value. When
+  an object is streamlined, acorn logging functionality is disabled for *all*
+  sub-calls that are invoked by the top-level call. This makes it almost as fast
+  as if `acorn` was never there. However, we still have one extra call for every
+  decorated method, so there is a slight performance hit. Streamlining is most
+  useful for plotting routines that typically need thousands of method calls,
+  many to public, `acorn`\-decorated methods.
 
+.. note::
+
+   In order for an object to be streamlined, it *must* be included in the
+   `[tracking]` rules, or `acorn` can never intercept it. To prevent log entries
+   from being created, but with streamlining enabled, allow the object to be
+   tracked, then add it to `[streamline]` *and* `[logging]` (with a value of
+   `0`).
+  
+.. note::
+
+   Even if a FQDN is specified in `[logging]`, it may still not produced log
+   entries if the rules in `[tracking]` prevent it from being decorated in the
+   first place.
+  
 For the `[tracking]`, `[timing]` and `[analysis]` sections, the following
 options are available:
 

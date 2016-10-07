@@ -130,7 +130,14 @@ def tracker(obj):
         #We have to run the tracker on each of the elements in the list, set,
         #dict or tuple; this is necessary so that we can keep track of
         #subsequent calls made with unpacked parts of the tuple.
-        return [tracker(o) for o in obj]
+        result = []
+        for o in obj:
+            track = tracker(o)
+            if isinstance(track, Instance):
+                result.append(track.uuid)
+            else:
+                result.append(track)
+        return tuple(result)
     elif isinstance(obj, slice):
         return "slice({}, {}, {})".format(obj.start, obj.stop, obj.step)
     elif type(obj) is type:

@@ -13,7 +13,7 @@ def test_tracker():
     assert tracker(slice(0, 2, 4)) == "slice(0, 2, 4)"
 
     import numpy as np
-    assert tracker(np.sqrt.__acornext__) == "numpy.sqrt"
+    assert tracker(np.sqrt.__acorn__) in ["numpy.sqrt", "numpy.matlib.sqrt"]
 
 def test_dbdir():
     """Tests resetting the database directory manually.
