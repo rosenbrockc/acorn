@@ -1,5 +1,9 @@
 # Revision History
 
+## Revision 0.0.11
+
+- Added two extra ignores to `sklearn` to stop segfaulting problem.
+
 ## Revision 0.0.10
 
 - Fixed streamlining for the `pandas` data frame plots by updating the config file. Also added streamlining support for constructors.

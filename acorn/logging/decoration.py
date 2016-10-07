@@ -1207,6 +1207,7 @@ def decorate_obj(parent, n, o, otype, recurse=True, redecorate=False):
 
             #We can't update the attributes of the static methods (it just
             #produces errors), so we do what we can before that.
+            msg.std("Setting decorator on {}.".format(fqdn), 4)
             _update_attrs(clog, o)
             if ((hasattr(o, "im_self") and o.im_self is parent)):
                 clog = staticmethod(clog)
