@@ -22,15 +22,24 @@ def test_dbdir():
     odbdir = dbdir
     set_dbdir(None)
     configured = _dbdir()
+    
     from os import path, name
+    from acorn.utility import reporoot
     if name != "nt":
-        assert configured == path.abspath(path.expanduser("~/temp/acorn"))
+        assert configured == path.join(reporoot, "tests", "dbs")
     set_dbdir(odbdir)    
 
 def test_options():
     """Tests getting of database options from using the generic function.
     """
     from acorn.logging.database import TaskDB
-    assert TaskDB.get_option("folder") == "~/temp/acorn"
-    assert TaskDB.get_option("folder", cast=str) == "~/temp/acorn"
+    assert TaskDB.get_option("folder") == "./tests/dbs"
+    assert TaskDB.get_option("folder", cast=str) == "./tests/dbs"
     
+def test_listproj():
+    """Tests the listing of projects and tasks in the database directory.
+    """
+    from acorn.logging.database import list_tasks
+    from acorn.utility import abspath
+    tasks = list_tasks(abspath("./tests/dbs"))
+    assert tasks == {'default': ['default'], 'haul': ['bcs'], 'acorn': ['x']}

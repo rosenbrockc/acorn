@@ -1,5 +1,10 @@
 # Revision History
 
+## Revision 0.0.13
+
+- Fixed issue #14.
+- Added a function to list all projects and tasks in the database directory.
+
 ## Revision 0.0.12
 
 - Fixed `pandas.get` and `pandas.__getitem__` issues.
