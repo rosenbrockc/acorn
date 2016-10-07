@@ -39,6 +39,25 @@ Other packages with C-extensions or low-level C or Fortran optimization
 sometimes declare additional built-in functions or do other strange
 things. These should also be tested.
 
+# Testing the Javascript Integration
+
+In the `./tests/js` folder there is an HTML file called `load.html`. Open it in
+the browser. Make sure the browser console is open. Click on the button and find
+the `haul.bcs.json` database file (in the same folder). A `Notebook` object
+instance will be logged to the console. Right-click on it and save it as a
+global variable. Then:
+
+```javascript
+//List all the days that are present in the notebook.
+temp1.days
+//Describe the blocks available between 4 and 5 PM on the first day.
+temp1.days[0].getBlocks(16)
+```
+
+You can use the browser developer tools to look around at what the objects look
+like. Later, we can switch to a more automated workflow once the front-end
+integration is completed.
+
 # Notes
 
 `sklearn` uses C-extension modules for some of the algorithms (like
