@@ -1,5 +1,11 @@
 # Revision History
 
+## Revision 0.0.12
+
+- Fixed `pandas.get` and `pandas.__getitem__` issues.
+- Fixed the broken decoration problem; it was caused by the `_cstack_call` depth being too high when an exception was handled by `acorn` or unhandled by `acorn`, but handled by a higher level calling method.
+- Fixed the `pytest` internal errors; they were being caused by trying to print the arguments in the `xwrapper` exception handler; now we just print the types of the arguments.
+
 ## Revision 0.0.11
 
 - Added two extra ignores to `sklearn` to stop segfaulting problem.
