@@ -43,6 +43,7 @@ from acorn.logging.analysis import analyze
 import acorn
 import six
 import inspect
+from acorn.base import testmode
 
 decorating = False
 """bool: when True, the script is decorating objects; if any other objects have
@@ -76,6 +77,7 @@ def _safe_getmodule(o):
         return getmodule(o)
     except: # pragma: no cover
         #There is nothing we can do about this for now.
+        msg.err("_safe_getmodule: {}".format(o), 2)
         pass
 
 def _safe_getattr(o):
@@ -101,6 +103,7 @@ def _safe_hasattr(o, attr):
         has = hasattr(o, attr)
     except: # pragma: no cover
         has = False
+        msg.err("_safe_hasattr: {}.{}".format(o, attr), 2)
         pass
     return has
 
@@ -109,25 +112,39 @@ def _update_attrs(nobj, oobj, exceptions=None, acornext=False):
     attributes in the exceptions list.
     """
     success = True
-    if acornext and hasattr(oobj, "__acornext__"): # pragma: no cover
+    if (acornext and hasattr(oobj, "__acornext__")
+        and oobj.__acornext__ is not None): # pragma: no cover
         target = oobj.__acornext__
     else:
         target = oobj
         
     for a, v in _get_members(target):
+        if hasattr(nobj, a):
+            #We don't want to overwrite something that acorn has already done.
+            continue
+        if a in ["__class__", "__code__", "__closure__"]:# pragma: no cover
+            #These attributes are not writeable by design.
+            continue
+        
         if exceptions is None or a not in exceptions:
             try:
                 setattr(nobj, a, v)
-            except TypeError:
+            except TypeError:# pragma: no cover
                 #Some of the built-in types have __class__ attributes (for
                 #example) that we can't set on a function type. This catches
                 #that case and any others.
+                emsg = "_update_attrs (type): {}.{} => {}"
+                msg.err(emsg.format(nobj, a, target), 2)
                 pass
-            except AttributeError:
+            except AttributeError:# pragma: no cover
                 #Probably a read-only attribute that we are trying to set. Just
                 #ignore it.
+                emsg = "_update_attrs (attr): {}.{} => {}"
+                msg.err(emsg.format(nobj, a, target), 2)
                 pass
-            except ValueError:
+            except ValueError:# pragma: no cover
+                emsg = "_update_attrs (value): {}.{} => {}"
+                msg.err(emsg.format(nobj, a, target), 2)
                 success = False
 
     return success
@@ -272,15 +289,8 @@ def _tracker_str(item):
     if instance is not None:
         if isinstance(instance, str):
             return instance
-        elif isinstance(instance, list):
-            #We return the uuid for each item in the list.
-            result = []
-            for i in instance:
-                if hasattr(i, "uuid"):
-                    result.append(i.uuid)
-                else:
-                    result.append(i)
-            return tuple(result)
+        elif isinstance(instance, tuple):
+            return instance
         else:
             return instance.uuid
     else:
@@ -405,6 +415,8 @@ def creationlog(base, package, stackdepth=_def_stackdepth):
             #See if we need to enable streamlining for this constructor.
             fqdn = cls.__fqdn__
             if fqdn in _streamlines and _streamlines[fqdn]:
+                #We only use streamlining for the plotting routines at the
+                #moment, so it doesn't get hit by the unit tests.
                 msg.std("Streamlining {}.".format(fqdn), 2)
                 origstream = streamlining
                 streamlining = True
@@ -443,7 +455,7 @@ def creationlog(base, package, stackdepth=_def_stackdepth):
                 print(cls, argl, argd)
                 raise
         else: # pragma: no cover
-            msg.err("Object creation failed for {}.".format(base.__name__))
+            msg.err("Object initialize failed for {}.".format(base.__name__))
 
         #If we don't disable streamlining for the original method that set
         #it, then the post call would never be reached.
@@ -525,13 +537,17 @@ def _pre_call(atdepth, parent, fqdn, stackdepth, *argl, **argd):
             # It must have the first argument be the instance.
             ekey = _tracker_str(argl[0])
 
-        entry = {
-            "m": fqdn,
-            "a": args,
-            "s": time(),
-            "r": None,
-            "c": code,
-        }
+        #Check whether the logging has been overidden by a configuration option.
+        if (fqdn not in _logging or _logging[fqdn]):
+            entry = {
+                "m": fqdn,
+                "a": args,
+                "s": time(),
+                "r": None,
+                "c": code,
+            }
+        else:
+            entry = None
     else:
         entry = None
         atdepth = True
@@ -642,7 +658,7 @@ class CallingDecorator(object):
               based on package settings.
         """
         def wrapper(*argl, **argd):
-            global streamlining
+            global streamlining, _cstack_call
             origstream = None
             if not (decorating or streamlining):
                 entry, bound, ekey = pre(fqdn, parent, stackdepth, *argl,**argd)
@@ -652,15 +668,44 @@ class CallingDecorator(object):
                     msg.std("Streamlining {}.".format(fqdn), 2)
                     origstream = streamlining
                     streamlining = True
+                    
+            #There is a terrible subtlety here. Some packages use the
+            #exceptions to figure out what to do next. Scenario: a package
+            #calls a method and has several `except` statements to handle
+            #the exceptions it raises and make decisions. We *wrap* the
+            #specified method and then catch the exception here. If we don't
+            #bubble the exception up, then it won't be able to handle it. If
+            #we do, then actual exceptions that get raised could break the
+            #acorn logging.
+            
+            #Just let the call do whatever it wants to. The difficulty now
+            #is that if this method raises an exception, we never get to the
+            #post() call below that pops this method off the call stack. So,
+            #forever after, we will be at depth and nothing will log... If
+            #we pop the call here, then there was no real point in pushing
+            #it in the first place. So, we try the method; if it fails, we
+            #pop the call stack and then raise the exception to bubble it
+            #up.
+            try:
+                result = self.func(*argl, **argd)
+            except:
+                if len(_cstack_call) > 0:
+                    _cstack_call.pop()
+                if not testmode and not(decorating or streamlining):
+                    import sys
+                    xt, xm = sys.exc_info()[0:2]
+                    error = "{}('{}')".format(xt.__name__, ', '.join(xm))
+                    if entry is not None:
+                        entry["!"] = error
+                raise    
                 
-            result = self.func(*argl, **argd)
             #NOTE: it may seem clever to enable the streamlining here as well,
             #however, this ends up causing infinite recursion loops because
             #methods like np.array need to end up being of the sub-classed
             #ndarray type before the decorators will quit.
             if not decorating:
                 if fqdn in _callwraps:
-                    result = _callwraps[fqdn](result)            
+                    result = _callwraps[fqdn](result)
 
             #If we don't disable streamlining for the original method that set
             #it, then the post call would never be reached.
@@ -731,6 +776,9 @@ def _create_extension(o, otype, fqdn, pmodule):
                 return o(*args, **kwargs)
             except:
                 #see issue #4.
+                targs = list(map(type, args))
+                kargs = list(kwargs.keys())
+                msg.err("xwrapper: {}({}, {})".format(o, targs, kargs), 2)
                 pass
             
         #Set the docstring and original object attributes.
@@ -967,7 +1015,7 @@ def _split_object(pobj, package, resplit=False, packincl=None, skipext=False):
             #The object was probably of type unknown and doesn't have a __name__
             #attribute, so we just skip it.
             return
-        
+
         package = fqdn.split('.')[0]
         if confok or (filter_name(n, package) and filter_name(fqdn, package)):
             xobj = _extend_object(pobj, n, o, t, fqdn)
@@ -1099,7 +1147,7 @@ def _get_stack_depth(package, fqdn, defdepth=_def_stackdepth):
         result = defdepth
 
     if not usedef:
-        msg.gen("Using {} for {} stack depth.".format(result, fqdn), 2)
+        msg.gen("Using {} for {} stack depth.".format(result, fqdn), 3)
     return result
 
 _decor_count = {"__builtin__": [0,0,0], "__main__": [0,0,0]}
@@ -1153,16 +1201,18 @@ def decorate_obj(parent, n, o, otype, recurse=True, redecorate=False):
         if hasattr(o, "__call__") and otype != "classes":
             #calling on class types is handled by the construction decorator
             #below.
-            cdecor = CallingDecorator(o.__call__)
+            cdecor = CallingDecorator(o)
             if isclass(parent):
                 clog = cdecor(fqdn, package, parent, d)
             else:
                 clog = cdecor(fqdn, package, None, d)
-            
-            _safe_setattr(clog, "__acornext__", o)
+
+            #We can't update the attributes of the static methods (it just
+            #produces errors), so we do what we can before that.
+            msg.std("Setting decorator on {}.".format(fqdn), 4)
             _update_attrs(clog, o)
             if ((hasattr(o, "im_self") and o.im_self is parent)):
-                clog = staticmethod(clog)               
+                clog = staticmethod(clog)
             setok = _safe_setattr(parent, n, clog)
 
             if setok:
@@ -1210,7 +1260,7 @@ def decorate_obj(parent, n, o, otype, recurse=True, redecorate=False):
         child = getattr(parent, n)
         if target is not None:
             clog = target(fqdn, package, parent)
-            _safe_setattr(clog, "__acornext__", o)
+            _safe_setattr(clog, "__acorn__", o)
             _update_attrs(clog, o)
             
             setok = _safe_setattr(parent, n, clog)
@@ -1231,6 +1281,38 @@ def _load_subclasses(package):
         if spack.has_section("subclass"):
             _explicit_subclasses.update(dict(spack.items("subclass")))
 
+def _load_generic(packname, package, section, target):
+    """Loads the settings for generic options that take FQDN and a boolean value
+    (1 or 0).
+
+    Args:
+        packname (str): name of the package to get config settings for.
+        package: actual package object.
+    """
+    from acorn.config import settings
+    spack = settings(packname)
+    if spack.has_section(section):
+        secitems = dict(spack.items(section))
+        for fqdn, active in secitems.items():
+            target[fqdn] = active == "1"
+            
+_logging = {}
+"""dict: keys are functions fqdns; values are `bool`, indicating whether the
+method should be logged. This enables functions to be tracked (for example to
+enable streamlining of sub-calls that *are* normally logged) but prevents them
+from producing entries in the database.
+"""
+def _load_logging(packname, package):
+    """Loads the settings for methods that should *not* be logged, even though
+    they are being tracked.
+
+    Args:
+        packname (str): name of the package to get config settings for.
+        package: actual package object.
+    """
+    global _logging
+    _load_generic(packname, package, "logging", _logging)
+
 _streamlines = {}
 """dict: keys are function fqdns; values are `bool`, indicating whether the
 method should streamline all subsequent method calls.
@@ -1245,12 +1327,7 @@ def _load_streamlines(packname, package):
         package: actual package object.
     """
     global _streamlines
-    from acorn.config import settings
-    spack = settings(packname)
-    if spack.has_section("streamline"):
-        streamlines = dict(spack.items("streamline"))
-        for fqdn, active in streamlines.items():
-            _streamlines[fqdn] = active == "1"
+    _load_generic(packname, package, "streamline", _streamlines)
 
 _callwraps = {}
 """dict: keys are function fqdns; values are other function, class or method
@@ -1322,6 +1399,7 @@ def decorate(package):
         #call wraps to point to the new decorated objects.
         _load_callwraps(npack, package)
         _load_streamlines(npack, package)
+        _load_logging(npack, package)
         decorating = origdecor
         _decorated_packs.append(npack)
         _pack_paths.append("{}{}".format(npack, sep))

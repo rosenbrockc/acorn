@@ -45,6 +45,37 @@ def set_dbdir(dbdir_):
     global dbdir
     dbdir = dbdir_
 
+def list_tasks(target=None):
+    """Returns a list of all the projects and tasks available in the `acorn`
+    database directory.
+
+    Args:
+        target (str): directory to list the projects for. Defaults to the configured
+          database directory.    
+
+    Returns:
+        dict: keys are project names; values are lists of tasks associated with the
+          project.
+    """
+    from os import getcwd, chdir
+    from glob import glob
+    original = getcwd()
+    if target is None:# pragma: no cover
+        target = _dbdir()
+        
+    chdir(target)
+    result = {}
+    for filename in glob("*.*.json"):
+        project, task = filename.split('.')[0:2]
+        if project not in result:
+            result[project] = []
+        result[project].append(task)
+
+    #Set the working directory back to what it was.
+    chdir(original)
+        
+    return result
+    
 def set_task(project_, task_):
     """Sets the active project and task. All subsequent logging will be saved to
     the database with that project and task.
@@ -107,7 +138,6 @@ def tracker(obj):
           that object; else None.
     """
     import types as typ
-    import numpy as anp
     global oids, uuids
     import six
     from inspect import isclass
@@ -130,7 +160,14 @@ def tracker(obj):
         #We have to run the tracker on each of the elements in the list, set,
         #dict or tuple; this is necessary so that we can keep track of
         #subsequent calls made with unpacked parts of the tuple.
-        return [tracker(o) for o in obj]
+        result = []
+        for o in obj:
+            track = tracker(o)
+            if isinstance(track, Instance):
+                result.append(track.uuid)
+            else:
+                result.append(track)
+        return tuple(result)
     elif isinstance(obj, slice):
         return "slice({}, {}, {})".format(obj.start, obj.stop, obj.step)
     elif type(obj) is type:
@@ -148,8 +185,6 @@ def tracker(obj):
             return "lambda ({})".format(', '.join(_code.co_varnames))
     elif type(obj) in [typ.FunctionType, typ.MethodType]: # pragma: no cover
         return obj.__name__
-    elif type(obj) is anp.ufunc:
-        return "numpy.{}".format(obj.__name__)
     elif not isinstance(obj, untracked):
         #For many of the numpy/scipy methods, the result is a tuple of numpy
         #arrays. In that case, we should maintain the tuple structure for
@@ -169,7 +204,7 @@ def _dbdir():
     """Returns the path to the directory where acorn DBs are stored.
     """
     global dbdir
-    from os import mkdir, path
+    from os import mkdir, path, getcwd, chdir
     
     if dbdir is None:
         from acorn.config import settings
@@ -181,9 +216,12 @@ def _dbdir():
             raise ValueError("The folder to save DBs in must be configured"
                              "  in 'acorn.cfg'")
 
-    if not path.isabs(dbdir[0]):
+    #It is possible to specify the database path relative to the repository
+    #root. path.abspath will map it correctly if we are in the root directory.
+    from acorn.utility import abspath
+    if not path.isabs(dbdir):
         #We want absolute paths to make it easier to port this to other OS.
-        dbdir = path.abspath(path.expanduser(dbdir))
+        dbdir = abspath(dbdir)
         
     if not path.isdir(dbdir): # pragma: no cover
         mkdir(dbdir)

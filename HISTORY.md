@@ -1,5 +1,20 @@
 # Revision History
 
+## Revision 0.0.13
+
+- Fixed issue #14.
+- Added a function to list all projects and tasks in the database directory.
+
+## Revision 0.0.12
+
+- Fixed `pandas.get` and `pandas.__getitem__` issues.
+- Fixed the broken decoration problem; it was caused by the `_cstack_call` depth being too high when an exception was handled by `acorn` or unhandled by `acorn`, but handled by a higher level calling method.
+- Fixed the `pytest` internal errors; they were being caused by trying to print the arguments in the `xwrapper` exception handler; now we just print the types of the arguments.
+
+## Revision 0.0.11
+
+- Added two extra ignores to `sklearn` to stop segfaulting problem.
+
 ## Revision 0.0.10
 
 - Fixed streamlining for the `pandas` data frame plots by updating the config file. Also added streamlining support for constructors.
