@@ -4,7 +4,7 @@
    contain the root `toctree` directive.
 
 Automatic Computational Research Notebook
-=======================================
+=========================================
 
 ACORN automates the decoration and logging of computational research in a smart
 way that makes it easy to keep "lab notebooks" for computational
