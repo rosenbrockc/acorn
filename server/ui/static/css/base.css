@@ -26,7 +26,7 @@ body > .container {
   padding: 60px 15px 0;
 }
 .container .text-muted {
-    margin: 20px 0;
+  margin: 20px 0;
 }
 
 .footer > .container {
@@ -36,9 +36,4 @@ body > .container {
 
 code {
   font-size: 80%;
-}
-
-.container .col-sm-8 {
-    text-align: right;
-    margin: 20px 0;
 }

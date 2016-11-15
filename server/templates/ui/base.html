@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+
+{% load static %}
+{% load dictionary_extras %}
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
+    <meta name="description" content="">
+    <meta name="author" content="">
+    <!-- <link rel="icon" href="../../favicon.ico"> -->
+
+    <title>Acorn</title>
+
+    <script type="text/javascript" src="https://www.dropbox.com/static/api/2/dropins.js" id="dropboxjs" data-app-key="nmpkzdntiqspphg"></script>
+    <script src="{% static 'js/acorn.js' %}"></script>
+    <!-- Bootstrap core CSS -->
+    <link href="{% static 'css/bootstrap.min.css' %}" rel="stylesheet">
+    <link href="{% static 'css/sticky-footer-navbar.css' %}" rel="stylesheet">
+  </head>
+
+  <body>
+
+    <div class="container">
+
+      <!-- Static navbar -->
+      <nav class="navbar navbar-default navbar-fixed-top">
+        <div class="container">
+          <div class="navbar-header">
+            <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
+              <span class="sr-only">Toggle navigation</span>
+              <span class="icon-bar"></span>
+              <span class="icon-bar"></span>
+              <span class="icon-bar"></span>
+            </button>
+            <a class="navbar-brand" href="https://github.com/rosenbrockc/acorn">
+	      <img style="max-width:50px; margin-top: -10px"
+    		   src="{% static "acorn-sm.png" %}"/></a>
+          </div>
+          <div id="navbar" class="collapse navbar-collapse navbar-ex1-collapse">
+            <ul class="nav navbar-nav">
+              <li class="active"><a href="/">Home</a></li>
+              <li><a href="/about/">About</a></li>
+	      
+              <li class="menu-item dropdown">
+		<a href="#" class="dropdown-toggle" data-toggle="dropdown">Projects</a>
+    		<ul class="dropdown-menu">
+    		  <!-- <ul class="list-inline"> -->
+    		  <ul>
+    		    {% for proj in projects %}
+    		    {% for task in projects|access:proj %}
+		    {% if task == "hex_color" %}
+    		    <ul class="menu-item dropdown dropdown-submenu" style="background-color:{{projects|access:proj|access:task}};"><a href="#" class="dropdown-toggle" data-toggle="dropdown">{{proj}}</a>
+		      {% endif %}
+    		      {% endfor %}
+    		      <ul class="dropdown-menu">
+    			<!-- <ul class="list-inline"> -->
+    			  {% for task in projects|access:proj %}
+			  {% if task != "hex_color" %}
+    			  <li><a href="#">{{task}}</a></li>
+			  {% endif %}
+    			  {% endfor %}
+    			<!-- </ul> -->
+    		      </ul>
+    		    </ul>
+    		    {% endfor %}
+    		  </ul>
+    		</ul>
+    	      </li>
+              <li><a href="/daily_log">Daily Log</a></li>
+            </ul>
+          </div><!--/.nav-collapse -->
+        </div><!--/.container-fluid -->
+      </nav>
+
+      <div class="default">
+    	{% block body_block %}
+    	Nothing to show here yet.
+    	{% endblock %}
+      </div>
+
+    </div> <!-- /container -->
+    <footer class="footer">
+      <div class="container">
+	<div class="row">
+          <p class="col-sm-4 text-muted">&copy; Acorn 2016</p>
+	  <ul style="list-style:none" class="col-sm-8">
+            <li>
+	      <a href="https://github.com/rosenbrockc/acorn/issues">Report a Bug</a>
+	    </li>
+	  </ul>
+	</div>
+      </div>
+    </footer>
+
+    <!-- Bootstrap core JavaScript -->
+    <!-- Placed at the end of the document so the pages load faster -->
+        <!-- <p id="hello">Tester FIle API</p> -->
+
+	<!-- <button onclick="foo()">Try it</button> -->
+
+	<!-- <script> -->
+	<!--   options = { -->
+
+	<!--   // Required. Called when a user selects an item in the Chooser. -->
+	<!--   success: function(files) { -->
+        <!--   alert("Here's the file link: " + files[0].link) -->
+	<!--   }, -->
+	  
+	<!--   // Optional. Called when the user closes the dialog without selecting a file -->
+	<!--   // and does not include any parameters. -->
+	<!--   cancel: function() { -->
+	  
+	<!--   }, -->
+	  
+	<!--   // Optional. "preview" (default) is a preview link to the document for sharing, -->
+	<!--   // "direct" is an expiring link to download the contents of the file. For more -->
+	<!--   // information about link types, see Link types below. -->
+	<!--   linkType: "preview", // or "direct" -->
+	  
+	<!--   // Optional. A value of false (default) limits selection to a single file, while -->
+	<!--   // true enables multiple file selection. -->
+	<!--   multiselect: false, // or true -->
+	  
+	<!--   // Optional. This is a list of file extensions. If specified, the user will -->
+	<!--   // only be able to select files with these extensions. You may also specify -->
+	<!--   // file types, such as "video" or "images" in the list. For more information, -->
+	<!--   // see File types below. By default, all extensions are allowed. -->
+	<!--   extensions: ['.pdf', '.doc', '.docx'], -->
+	<!--   }; -->
+	<!--   var foo = function(){ -->
+	<!--   var button = Dropbox.createChooseButton(options); -->
+	<!--   document.body.appendChild(button); -->
+	  
+	<!--   };    </script> -->
+    <script src="{% static 'js/jquery-ajax.min.js' %}"></script>
+    <script src="{% static 'js/bootstrap.min.js' %}"></script>
+  </body>
+</html>

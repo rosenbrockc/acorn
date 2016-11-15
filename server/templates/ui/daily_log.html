@@ -1,0 +1,37 @@
+{% extends "ui/base.html" %}
+
+{% load static %}
+{% block body_block %}
+
+<h1>Welcome to Acorn</h1>
+
+<table id="list" cellspacing="0" border="1">
+  <thead>
+    <tr>
+      <th>Date</th>
+      <th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+
+  </tbody>
+</table>
+
+<script type="text/javascript">
+  function renderDB(file){
+  var reader = new FileReader();
+  var html = '';
+  for(var i in acorn.dbListDates("/Users/wileymorgan/Dropbox/acorn/haul.bcs.json"))
+  {
+    html += '<tr id="'+i+'">';
+    html += '<td>'+i+'</td>';
+    html += '<td><a href="#">'+i+'</a></td>';
+    html += '</tr>';
+  }
+
+  $('#list > tbody').html(html)
+  
+</script>
+
+
+{% endblock %}
