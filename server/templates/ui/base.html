@@ -53,14 +53,14 @@
     		    {% for proj in projects %}
     		    {% for task in projects|access:proj %}
 		    {% if task == "hex_color" %}
-    		    <ul class="menu-item dropdown dropdown-submenu" style="background-color:{{projects|access:proj|access:task}};"><a href="#" class="dropdown-toggle" data-toggle="dropdown">{{proj}}</a>
+    		    <ul class="menu-item dropdown dropdown-submenu" style="background-color:{{projects|access:proj|access:task}};"><a href="#" class="dropdown-toggle" data-toggle="dropdown" style="color:black;">{{proj}}</a>
 		      {% endif %}
     		      {% endfor %}
     		      <ul class="dropdown-menu">
     			<!-- <ul class="list-inline"> -->
     			  {% for task in projects|access:proj %}
 			  {% if task != "hex_color" %}
-    			  <li><a href="#">{{task}}</a></li>
+    			  <li style="background-color:{{projects|access:proj|access:task}};"><a href="#">{{task}}</a></li>
 			  {% endif %}
     			  {% endfor %}
     			<!-- </ul> -->

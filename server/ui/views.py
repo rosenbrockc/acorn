@@ -3,11 +3,6 @@ from django.http import HttpResponse, HttpResponseRedirect
 from django.template import RequestContext
 import os
 
-def hex_to_RGB(hex):
-    ''' "#FFFFFF" -> [255,255,255] '''
-    # Pass 16 to the integer function for change of base
-    return [int(hex[i:i+2], 16) for i in range(1,6,2)]
-
 def _get_colors(n):
     """Returns n unique and "evenly" spaced colors for the backgrounds
     of the projects.
@@ -18,56 +13,51 @@ def _get_colors(n):
     Returns:
         colors (list of str): The colors in hex form.
     """
-    # import colorsys
-    # HSV_tuples = [(x*1.0/n, 0.5, 0.5) for x in range(n)]
-    # RGB_tuples = map(lambda x: colorsys.hsv_to_rgb(*x), HSV_tuples)
-    # colors = ['#%02x%02x%02x' % col for col in RGB_tuples]
-    # return colors
-    # def linear_gradient(start_hex, finish_hex="#FFFFFF", n=10):
-    #   ''' returns a gradient list of (n) colors between
-    #     two hex colors. start_hex and finish_hex
-    #     should be the full six-digit color string,
-    #     inlcuding the number sign ("#FFFFFF") '''
-    # Starting and ending colors in RGB form
-    s = hex_to_RGB('#000000')
-    f = hex_to_RGB('#FFFFFF')
-    # Initilize a list of the output colors with the starting color
-    RGB_list = [s]
-    # Calcuate a color at each evenly spaced value of t from 1 to n
-    for t in range(1, n):
-        # Interpolate RGB vector for color at the current value of t
-        curr_vector = [
-            int(s[j] + (float(t)/(n-1))*(f[j]-s[j]))
-            for j in range(3)
-        ]
-        # Add it to our list of output colors
-        print(tuple(curr_vector))
-        RGB_list.append(tuple(curr_vector))
+
+    import matplotlib.pyplot as plt
+    import matplotlib
+    
+    # cmap = plt.cm.get_cmap('Set2')
+    cmap = plt.cm.get_cmap('Accent')
+    this_color = 0.0
+    interval = 1.0/n
     colors = []
-    for col in RGB_list:
-        print(col)
-        colors.append('#%02x%02x%02x' % (col[0],col[1],col[2]))
+    while len(colors) < n:
+        colors.append(matplotlib.colors.rgb2hex(cmap(this_color)[:3]))
+        this_color += interval
+
     return colors
 
+def _color_variant(hex_color, brightness_offset=1):
+    """Takes a color like #87c95f and produces a lighter or darker variant.
+    Code adapted from method proposed by Chase Seibert at:
+    http://chase-seibert.github.io/blog/2011/07/29/python-calculate-lighterdarker-rgb-colors.html.
     
-    # max_value = 16581375 #255**3
-    # interval = int(max_value / n)
-    # colors = [hex(I)[2:].zfill(6) for I in range(0, max_value, interval)]
-    # colors = ["#"+i for i in colors]
-    # print(colors)
-    # return colors
-    # from random import randint
+    Args:
+        hex_color (str): The original hex color.
+        brightness_offset (int): The amount to shift the color by.
 
-    # from math import floor
-    # r = lambda
-    # # divs = floor(256.0/n)
-    # colors = []
-    # # this_color = 0
-    # while len(colors) < n:
-    #     colors.append('#%02X%02X%02X' % (this_color,this_color,this_color))
-    #     # this_color += divs
+    Returns:
+        new_color (str): The new hex color variant.
 
-    # return colors
+    Raises:
+        Exception: if the len of the hex_color isn't the appropriate length (7).
+    """
+    if len(hex_color) != 7:
+        raise Exception("Passed %s into color_variant(), needs to be in #87c95f format." % hex_color)
+    rgb_hex = [hex_color[x:x+2] for x in [1, 3, 5]]
+    new_rgb_int = [int(hex_value, 16) + brightness_offset for hex_value in rgb_hex]
+    new_rgb_int = [min([255, max([0, i])]) for i in new_rgb_int] # make sure new values are between 0 and 255
+    # hex() produces "0x88", we want just "88"
+    new_color = "#"
+    for i in new_rgb_int:
+        if len(hex(i)[2:]) == 2:
+            new_color += hex(i)[2:]
+        else:
+            new_color += hex(i)[2:] + "0"
+
+    return new_color
+
 
 def _make_projcet_list(path):
     """Returns a dictionaries in which each project is a key and the
@@ -94,8 +84,12 @@ def _make_projcet_list(path):
     for p in proj:
         tasks = {}
         temp = [x.split(".")[1] for x in file_list if p in x]
+        hue_range = [i - len(temp)/2 for i in range(len(temp))]
+        hues = [_color_variant(colors[p_c],brightness_offset=hue*25) for hue in hue_range]
+        h_c = 0
         for t in temp:
-            tasks[t] = "c"
+            tasks[t] = hues[h_c]
+            h_c += 1
         tasks["hex_color"] = colors[p_c]
         projects[p] = tasks
         p_c += 1
