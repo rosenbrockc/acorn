@@ -1,0 +1,7 @@
+{% load dictionary_extras %}
+
+{% for task in projects %}
+{% if task != "hex_color" %}
+<li id="{{proj}}" style="background-color:{{projects|access:task}};"><a href="#">{{task}}</a></li>
+{% endif %}
+{% endfor %}

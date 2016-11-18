@@ -21,4 +21,7 @@ urlpatterns = [
     url(r'^$', views.index,name="index"),
     url(r'^about/$',views.about,name="about"),
     url(r'^daily_log/$',views.dailyLog,name="daily_log"),
+    url(r'^nav/$',views.nav,name="nav"),
+    url(r'^sub_nav/$',views.sub_nav,name="sub_nav"),
+    url(r'^sub_nav_list/$',views.sub_nav_list,name="sub_nav_list"),
  ]

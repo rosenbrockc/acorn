@@ -15,18 +15,12 @@ def _get_colors(n):
     """
 
     import matplotlib.pyplot as plt
-    import matplotlib
-    
-    # cmap = plt.cm.get_cmap('Set2')
-    cmap = plt.cm.get_cmap('Accent')
-    this_color = 0.0
-    interval = 1.0/n
-    colors = []
-    while len(colors) < n:
-        colors.append(matplotlib.colors.rgb2hex(cmap(this_color)[:3]))
-        this_color += interval
+    from matplotlib.colors import rgb2hex as r2h
+    from numpy import linspace
 
-    return colors
+    cols = linspace(0.05, .95, n)
+    cmap = plt.get_cmap('nipy_spectral')
+    return [r2h(cmap(i)) for i in cols]
 
 def _color_variant(hex_color, brightness_offset=1):
     """Takes a color like #87c95f and produces a lighter or darker variant.
@@ -70,9 +64,13 @@ def _make_projcet_list(path):
         projects (list of dict): A dictionary in which each project is a key 
           containing a list of it's tasks.
     """
-
+    from collections import OrderedDict
+    from matplotlib.colors import LinearSegmentedColormap
+    from matplotlib.colors import rgb2hex as r2h
+    from numpy import linspace
+    
     proj = []
-    projects = {}
+    projects = OrderedDict()
     file_list = os.listdir(path)
     for files in file_list:
         if files.split(".")[0] not in proj and 'json' in files:
@@ -81,11 +79,15 @@ def _make_projcet_list(path):
     # get the background color for each project.
     colors = _get_colors(len(proj))
     p_c = 0
+
     for p in proj:
-        tasks = {}
+        tasks = OrderedDict()
         temp = [x.split(".")[1] for x in file_list if p in x]
-        hue_range = [i - len(temp)/2 for i in range(len(temp))]
-        hues = [_color_variant(colors[p_c],brightness_offset=hue*25) for hue in hue_range]
+        cmspace = linspace(0.95, 0.25, len(temp))
+        cm = LinearSegmentedColormap.from_list("acorn.{}".format(p),
+                                               ['#ffffff', colors[p_c]],
+                                               N=max((len(temp), 25)))
+        hues = [r2h(cm(cmi)) for cmi in cmspace]
         h_c = 0
         for t in temp:
             tasks[t] = hues[h_c]
@@ -104,7 +106,6 @@ def index(request):
         path = "/Users/wileymorgan/Dropbox/acorn"
         projects = _make_projcet_list(path)
 
-    
     context_dict = {'projects':projects}
     return render_to_response("ui/index.html", context_dict, context)
 
@@ -127,3 +128,31 @@ def dailyLog(request):
     
     context_dict = {'projects':projects}
     return render_to_response("ui/daily_log.html", context_dict, context)
+
+def nav(request):
+    context = RequestContext(request)
+    projects = request.session.get('projects')
+    if not projects:
+        path = "/Users/wileymorgan/Dropbox/acorn"
+        projects = _make_projcet_list(path)
+
+    context_dict = {'projects':projects}
+    return render_to_response("ui/nav.html", context_dict, context)
+
+def sub_nav(request):
+    context = RequestContext(request)
+
+    return render_to_response("ui/sub_nav.html", context)
+
+def sub_nav_list(request):
+    context = RequestContext(request)
+    projects = request.session.get('projects')
+    if not projects:
+        path = "/Users/wileymorgan/Dropbox/acorn"
+        projects = _make_projcet_list(path)
+
+    for key in request.GET:
+        if key in projects:
+            context_dict = {'projects':projects[key],'proj':key}
+
+    return render_to_response("ui/sub_nav_list.html", context_dict, context)
