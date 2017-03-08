@@ -92,6 +92,9 @@ def _run_configure(subcmd, args):
 def run(args):
     """Runs the acorn setup/configuration commands.
     """
+    if args is None:
+        return
+    
     cmd = args["commands"][0]
     if cmd == "configure":
         if len(args["commands"]) < 2:

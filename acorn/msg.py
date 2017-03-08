@@ -39,6 +39,36 @@ def printer(text, color=None, **kwargs):
         else:
             cprint(text, color, **kwargs)
 
+def example(script, explain, contents, requirements, output, outputfmt, details):
+    """Prints the example help for the script."""
+    blank()
+    cprint(script.upper(), "yellow")
+    cprint(''.join(["=" for i in range(70)]) + '\n', "yellow")
+
+    cprint("DETAILS", "blue")
+    std(explain + '\n')
+
+    cprint(requirements, "red")
+    cprint(output, "green")
+    blank()
+
+    if details != "":
+        std(details)
+        blank()
+
+    cprint("OUTPUT FORMAT", "blue")
+    std(outputfmt)
+    blank()
+
+    cprint("EXAMPLES", "blue")
+    for i in range(len(contents)):
+        pre, code, post = contents[i]
+        std("{}) {}".format(i + 1, pre))
+        cprint("    " + code, "cyan")
+        if post != "":
+            std('\n' + post)
+        blank()
+            
 def arb(text, cols, split):
     """Prints a line of text in arbitrary colors specified by the numeric
     values contained in msg.cenum dictionary.
