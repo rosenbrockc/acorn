@@ -45,7 +45,7 @@ the :doc:`configuration` section.
 Contents:
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
 
    decoration.rst
    descriptors.rst

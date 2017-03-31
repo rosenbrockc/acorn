@@ -10,7 +10,7 @@ post-execution hook of the cell checks this variable to see if an image should
 be associated with the cell's output.
 """
 inspectors = ["isclass", "isfunction", "ismethod", "ismodule"]
-"""list: of functions in :module:`inspect` that will be *ignored* by the
+"""list: of functions in :mod:`inspect` that will be *ignored* by the
 automatic variable tracking after cell execution.
 """
 
