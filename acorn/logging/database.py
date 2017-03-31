@@ -161,12 +161,21 @@ def tracker(obj):
         #dict or tuple; this is necessary so that we can keep track of
         #subsequent calls made with unpacked parts of the tuple.
         result = []
-        for o in obj:
+
+        #If we get a list of 10K tuples (like plot points in matplotlib), then
+        #this pollutes the database. So, we restrict the maximum size of complex
+        #lists to be 5; we track the first 5 objects and then store a summary of
+        #the remaining information.
+        for o in obj[0:min((len(obj), 5))]:
             track = tracker(o)
             if isinstance(track, Instance):
                 result.append(track.uuid)
             else:
                 result.append(track)
+
+        if len(obj) > 5:
+            result.append("... ({0:d} items)".format(len(obj)))
+            
         return tuple(result)
     elif isinstance(obj, slice):
         return "slice({}, {}, {})".format(obj.start, obj.stop, obj.step)
