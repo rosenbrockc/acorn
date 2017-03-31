@@ -23,7 +23,9 @@ def config_dir(mkcustom=False):
     if testmode or (not path.isdir(alternate) and not mkcustom):
         return path.join(reporoot, "acorn", "config")
     else:
-        if mkcustom:
+        if mkcustom:# pragma: no cover
+            #This never gets reached when we are in testmode because we don't
+            #want to clobber the user's local config cache.
             from os import mkdir
             mkdir(alternate)
         return alternate

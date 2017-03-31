@@ -694,6 +694,11 @@ class CallingDecorator(object):
                 if not testmode and not(decorating or streamlining):
                     import sys
                     xt, xm = sys.exc_info()[0:2]
+                    if not hasattr(xm, "__iter__"):
+                        #If the arguments list is scalar, we get an exception
+                        #here, so we change it to be a list.
+                        xm = [xm]
+                        
                     error = "{}('{}')".format(xt.__name__, ', '.join(xm))
                     if entry is not None:
                         entry["!"] = error
@@ -838,7 +843,7 @@ def _safe_setattr(obj, name, value):
             else:
                 setattr(obj, name, value)
             return True
-    except (TypeError, AttributeError):
+    except (TypeError, AttributeError):# pragma: no cover
         _set_failures.append(okey)
         msg.warn("Failed {}:{} attribute set on {}.".format(name, value, obj))
         return False
@@ -1360,7 +1365,13 @@ def set_decorating(decorating_):
     """
     global decorating
     decorating = decorating_
-                
+
+def set_streamlining(streamline):
+    """Sets whether `acorn` logging logic should be disabled temporarily.
+    """
+    global streamlining
+    streamlining = streamline
+    
 def decorate(package):
     """Decorates all the methods in the specified package to have logging
     enabled according to the configuration for the package.

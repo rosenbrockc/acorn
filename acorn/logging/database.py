@@ -127,7 +127,7 @@ def cleanup():
                 prefix=False)
     
 def tracker(obj):
-    """Returns the Instance of the specified object if it is one that
+    """Returns the :class:`Instance` of the specified object if it is one that
     we track by default.
 
     Args:
@@ -253,13 +253,33 @@ def _json_clean(d):
 
     return (result, compkeys)
 
-def record(ekey, entry):
-    """Records the specified entry to the key-value store under the specified
-    entity key.
+def save_image(byteio, imgfmt):
+    """Saves the specified image to disk.
 
     Args:
-    ekey (str): fqdn/uuid of the method/object to store the entry for.
-    entry (dict): attributes and values gleaned from the execution.
+        byteio (bytes): image bytes to save to disk.
+        imgfmt (str): used as the extension of the saved file.
+
+    Returns:
+        str: a uuid for the saved image that can be added to the database entry.
+    """
+    from os import path, mkdir
+    ptdir = "{}.{}".format(project, task)
+    uuid = str(uuid4())
+
+    #Save the image within the project/task specific folder.
+    idir = path.join(dbdir, ptdir)
+    if not path.isdir(idir):
+        mkdir(idir)
+        
+    ipath = path.join(idir, "{}.{}".format(uuid, imgfmt))
+    with open(ipath, 'wb') as f:
+        f.write(byteio)
+
+    return uuid
+
+def active_db():
+    """Returns the active :class:`TaskDB` for the current project and task.
     """
     global dbs
     # The task database is encapsulated in a class for easier serialization to
@@ -271,12 +291,26 @@ def record(ekey, entry):
         taskdb = TaskDB()
         dbs[dbkey] = taskdb
         msg.okay("Initialized JSON database for {}.{}".format(*dbkey), 2)
-    
-    taskdb.record(ekey, entry)
+
+    return taskdb
+
+def record(ekey, entry, diff=False):
+    """Records the specified entry to the key-value store under the specified
+    entity key.
+
+    Args:
+        ekey (str): fqdn/uuid of the method/object to store the entry for.
+        entry (dict): attributes and values gleaned from the execution.
+        diff (bool): when True, the "c" element of `entry` will be diffed
+          against previous entries under the same `ekey` if their method
+          (attribute "m") matches.
+    """
+    taskdb = active_db()
+    taskdb.record(ekey, entry, diff)
     # The task database save method makes sure that we only save as often as
     # specified in the configuration file.
     taskdb.save()
-    
+
 class TaskDB(object):
     """Represents the database for a single task.
 
@@ -304,7 +338,7 @@ class TaskDB(object):
         self.lastsave = None
         self.load()
 
-    def _log_uuid(self, uuid):
+    def log_uuid(self, uuid):
         """Logs the object with the specified `uuid` to `self.uuids` if
         possible.
 
@@ -317,18 +351,32 @@ class TaskDB(object):
         if uuid not in self.uuids and uuid in uuids:
             self.uuids[uuid] = uuids[uuid].describe()
         
-    def record(self, ekey, entry):
+    def record(self, ekey, entry, diff=False):
         """Records the specified entry to the key-value store under the specified
         entity key.
 
         Args:
-        ekey (str): fqdn/uuid of the method/object to store the entry for.
-        entry (dict): attributes and values gleaned from the execution.
+            ekey (str): fqdn/uuid of the method/object to store the entry for.
+            entry (dict): attributes and values gleaned from the execution.
+            diff (bool): when True, the "c" element of `entry` will be diffed
+              against previous entries under the same `ekey` if their method
+              (attribute "m") matches.
         """
-        if ekey in self.entities:
-            self.entities[ekey].append(entry)
-        else:
-            self.entities[ekey] = [entry]
+        if ekey not in self.entities:
+            self.entities[ekey] = []
+            
+        #See if we need to diff the code to compress it.
+        if diff and len(self.entities[ekey]) > 0:
+            #Compress the code element of the current entry that we are saving.
+            from acorn.logging.diff import cascade, compress
+            sequence = [e["c"] for e in self.entities[ekey]
+                        if e["m"] == entry["m"]]
+            original = cascade(sequence)
+            difference = compress(original, entry["c"])
+            #Now, overwrite the entry with the compressed version.
+            entry["c"] = difference
+
+        self.entities[ekey].append(entry)
 
         #We also need to make sure we have uuids and origin information stored
         #for any uuids present in the parameter string.
@@ -345,8 +393,13 @@ class TaskDB(object):
                 pass
 
         if uid is not None and isinstance(uid, str):
-            self._log_uuid(uid)
+            self.log_uuid(uid)
 
+        #For the markdown and function definitions, we don't have any arguments,
+        #so we set that to None to save space.
+        if entry["a"] is None:
+            return
+                    
         for larg in entry["a"]["_"]:
             #We use the constructor to determine if the format of the argument
             #is a valid UUID; if it isn't then we catch the error and keep
@@ -356,7 +409,7 @@ class TaskDB(object):
             
             try:
                 uid = str(UUID(larg))
-                self._log_uuid(uid)
+                self.log_uuid(uid)
             except ValueError:
                 #This was obviously not a UUID, we don't need to worry about it,
                 #it has a user-readable string instead.
@@ -369,7 +422,7 @@ class TaskDB(object):
                 continue
             try:
                 uid = str(UUID(karg))
-                self._log_uuid(uid)
+                self.log_uuid(uid)
             except ValueError:
                 pass            
 
