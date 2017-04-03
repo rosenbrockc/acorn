@@ -30,7 +30,7 @@ if is_ipython(): # pragma: no cover
     #`./js/ipython.js`; we just read it in here and register it with ipython.
     from acorn.utility import reporoot
     from os import path
-    jspath = path.join(reporoot, "js", "ipython.js")
+    jspath = path.join(reporoot, "acorn", "js", "ipython.js")
     with open(jspath) as f:
         jscode = f.read()
     ip.run_cell_magic("javascript", "", jscode)

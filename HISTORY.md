@@ -1,5 +1,10 @@
 # Revision History
 
+## Revision 0.0.15
+
+- Added the new `ipython.js` file to the package data for acorn so that it gets
+  distributed correctly.
+
 ## Revision 0.0.14
 
 This revision addresses many of the missing features supporting the
