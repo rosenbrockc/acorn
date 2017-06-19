@@ -54,9 +54,10 @@ def _conf_packages(args):
     """
     from acorn.config import config_dir
     from os import path
+    from acorn.base import testmode
     target = config_dir(True)
     alternate = path.join(path.abspath(path.expanduser("~")), ".acorn")
-    if target != alternate:
+    if not testmode and target != alternate:# pragma: no cover
         msg.err("Could not configure custom ~/.acorn directory.")
         exit(0)
 
@@ -68,14 +69,20 @@ def _conf_packages(args):
     source = path.join(reporoot, "acorn", "config")
     chdir(source)
     count = 0
-    
+
+    #For the unit testing, we don't clobber the local directory, so the copies
+    #are disabled.
     for json in glob("*.json"):
-        copy(json, target)
+        if not testmode:# pragma: no cover
+            copy(json, target)
         count += 1
     for cfg in glob("*.cfg"):
-        copy(cfg, target)
+        if not testmode:# pragma: no cover
+            copy(cfg, target)
         count += 1
 
+    #Switch the directory back to what it was.
+    chdir(current)        
     msg.okay("Copied {0:d} package files to {1}.".format(count, target))
     
 def _run_configure(subcmd, args):
@@ -92,9 +99,12 @@ def _run_configure(subcmd, args):
 def run(args):
     """Runs the acorn setup/configuration commands.
     """
+    if args is None:
+        return
+    
     cmd = args["commands"][0]
     if cmd == "configure":
-        if len(args["commands"]) < 2:
+        if len(args["commands"]) < 2:# pragma: no cover
             msg.err("'configure' command requires a second, sub-command "
                     "parameter. E.g., `acorn.py configure packages`.")
             exit(0)

@@ -18,7 +18,7 @@ except ImportError:
 
 from os import path
 setup(name='acorn',
-      version='0.0.13',
+      version='0.0.15',
       description='Automated computational research notebook.',
       long_description= "" if not path.isfile("README.md") else read_md('README.md'),
       author='Conrad W Rosenbrock',
@@ -36,7 +36,7 @@ setup(name='acorn',
       packages=['acorn', 'acorn.logging', 'acorn.subclass', 'acorn.analyze',
                 'acorn.scipy', 'acorn.sklearn', 'acorn.matplotlib'],
       scripts=['acorn/acrn.py'],
-      package_data={'acorn': ['config/*.cfg', 'config/*.json']},
+      package_data={'acorn': ['config/*.cfg', 'config/*.json', 'js/ipython.js']},
       include_package_data=True,
       classifiers=[
           'Development Status :: 4 - Beta',

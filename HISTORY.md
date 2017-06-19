@@ -1,5 +1,27 @@
 # Revision History
 
+## Revision 0.0.15
+
+- Added the new `ipython.js` file to the package data for acorn so that it gets
+  distributed correctly.
+
+## Revision 0.0.14
+
+This revision addresses many of the missing features supporting the
+ipython/jupyter notebooks that are breaking features. Any notebook-level loops
+are now intercepted and wrapped within a cell function so that they don't
+generate millions of database entries; thumbnails get saved to the database (as
+long as the plots use PNG and JPEG as display types, we'll support vega and svg
+later). Also, diffing between cell executions is now implemented as well. 
+
+- Fixed issues #7, #20 and #25
+
+*NOTE*: unit testing is only up to 93%. We are still missing good unit tests for
+`matplotlib` and `sklearn` regressors auto-fit and auto-predict interception is
+not tested yet. The ipython notebook support module is now quite large and
+doesn't have any unit tests yet. Adding these unit tests will require using js
+to emulate the notebooks, etc. which I don't have time for now.
+
 ## Revision 0.0.13
 
 - Fixed issue #14.
