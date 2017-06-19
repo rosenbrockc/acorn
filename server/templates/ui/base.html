@@ -57,6 +57,7 @@
     	{% block body_block %}
 	Nothing goes here yet.
     	{% endblock %}
+	<div id="my-calendar"></div>
       </div>
 
     </div> <!-- /container -->
@@ -75,6 +76,11 @@
     </footer>
     <script src="{% static 'js/jquery-ajax.min.js' %}"></script>
     <script src="{% static 'js/bootstrap.min.js' %}"></script>
+    <script src="http://underscorejs.org/underscore-min.js"></script>
+    <script src="{% static 'js/date.format.js' %}"></script>
+    <script src="{% static 'js/zabuto_calendar.js' %}"></scritp>
+    <script src="{% static 'js/zabuto_calendar.min.js' %}"></scritp>
+    <script src="{% static 'js/acorn.js' %}"></script>
     <script src="{% static 'js/base.js' %}"></script>
   </body>
 </html>

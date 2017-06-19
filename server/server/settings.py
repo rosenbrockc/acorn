@@ -131,3 +131,9 @@ STATICFILES_DIRS = (
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(PROJECT_PATH,'media')
+
+CACHES = {
+   'default': {
+       'BACKEND': 'django.core.cache.backends.dummy.DummyCache',
+   }
+}

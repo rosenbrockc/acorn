@@ -1,7 +1,8 @@
 {% load dictionary_extras %}
+{% load ui_extras %}
 
 {% for task in projects %}
 {% if task != "hex_color" %}
-<li id="{{proj}}" style="background-color:{{projects|access:task}};"><a href="#">{{task}}</a></li>
+<li id="{{proj}}" style="background-color:{{ projects|getcolor:task }};"><a href="javascript:void(0);" onclick="render_project('{{projects|getdir:task}}','{{ projects|getcolor:task }}')" style="color:black">{{task}}</a></li>
 {% endif %}
 {% endfor %}

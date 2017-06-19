@@ -1,5 +1,9 @@
 # Revision History
 
+## Revision 0.0.16
+
+- Implemented changes in the user interface server. The Project View is almost complete.
+
 ## Revision 0.0.15
 
 - Added the new `ipython.js` file to the package data for acorn so that it gets

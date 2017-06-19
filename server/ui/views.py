@@ -2,6 +2,12 @@ from django.shortcuts import render, render_to_response
 from django.http import HttpResponse, HttpResponseRedirect
 from django.template import RequestContext
 import os
+import json
+
+from acorn.config import settings
+
+acorn_settings = settings("acorn")
+db_dir = os.path.expanduser(acorn_settings.get("database","folder"))
 
 def _get_colors(n):
     """Returns n unique and "evenly" spaced colors for the backgrounds
@@ -90,7 +96,7 @@ def _make_projcet_list(path):
         hues = [r2h(cm(cmi)) for cmi in cmspace]
         h_c = 0
         for t in temp:
-            tasks[t] = hues[h_c]
+            tasks[t] = [hues[h_c],p+"."+t+".json"]
             h_c += 1
         tasks["hex_color"] = colors[p_c]
         projects[p] = tasks
@@ -103,8 +109,7 @@ def index(request):
     context = RequestContext(request)
     projects = request.session.get('projects')
     if not projects:
-        path = "/Users/wileymorgan/Dropbox/acorn"
-        projects = _make_projcet_list(path)
+        projects = _make_projcet_list(db_dir)
 
     context_dict = {'projects':projects}
     return render_to_response("ui/index.html", context_dict, context)
@@ -113,8 +118,7 @@ def about(request):
     context = RequestContext(request)
     projects = request.session.get('projects')
     if not projects:
-        path = "/Users/wileymorgan/Dropbox/acorn"
-        projects = _make_projcet_list(path)
+        projects = _make_projcet_list(db_dir)
 
     context_dict = {'projects':projects}
     return render_to_response("ui/about.html", context_dict, context)
@@ -123,8 +127,7 @@ def dailyLog(request):
     context = RequestContext(request)
     projects = request.session.get('projects')
     if not projects:
-        path = "/Users/wileymorgan/Dropbox/acorn"
-        projects = _make_projcet_list(path)
+        projects = _make_projcet_list(db_dir)
     
     context_dict = {'projects':projects}
     return render_to_response("ui/daily_log.html", context_dict, context)
@@ -133,8 +136,7 @@ def nav(request):
     context = RequestContext(request)
     projects = request.session.get('projects')
     if not projects:
-        path = "/Users/wileymorgan/Dropbox/acorn"
-        projects = _make_projcet_list(path)
+        projects = _make_projcet_list(db_dir)
 
     context_dict = {'projects':projects}
     return render_to_response("ui/nav.html", context_dict, context)
@@ -148,11 +150,34 @@ def sub_nav_list(request):
     context = RequestContext(request)
     projects = request.session.get('projects')
     if not projects:
-        path = "/Users/wileymorgan/Dropbox/acorn"
-        projects = _make_projcet_list(path)
-
+        projects = _make_projcet_list(db_dir)
+        
     for key in request.GET:
         if key in projects:
             context_dict = {'projects':projects[key],'proj':key}
 
     return render_to_response("ui/sub_nav_list.html", context_dict, context)
+
+def view_proj(request):
+    context = RequestContext(request)
+
+    proj_path = []
+    for key in request.GET:
+        proj_path = str(key)
+        
+    path = ""
+    f = open(db_dir+proj_path,"r")
+    data = json.load(f)
+    f.close()
+    context_dict = {'json_data':data}
+
+    if request.is_ajax():
+        return HttpResponse(json.dumps(data))
+    else:
+        return render_to_response("ui/view_proj.html", context_dict, context)
+
+def view_tasks(request):
+    context = RequestContext(request)
+
+    context_dict = {}
+    return render_to_response("ui/view_tasks.html",context_dict,context)    
