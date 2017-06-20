@@ -421,13 +421,15 @@ $.fn.zabuto_calendar = function (options) {
                         $dowElement.addClass('event-styled');
                         $dayElement.addClass(value.classname);
                     }
-
                     if (typeof(value.badge) !== 'undefined' && value.badge !== false) {
                         var badgeClass = (value.badge === true) ? '' : ' badge-' + value.badge;
                         var dayLabel = $dayElement.data('day');
                         $dayElement.html('<span class="badge badge-event' + badgeClass + '">' + dayLabel + '</span>');
                     }
 
+		    if(typeof(value.color) !== 'undefined') {
+			$dowElement.css("background-color",value.color);
+		    }
                     if (typeof(value.body) !== 'undefined') {
                         var modalUse = false;
                         if (type === 'json' && typeof(value.modal) !== 'undefined' && value.modal === true) {
@@ -435,7 +437,6 @@ $.fn.zabuto_calendar = function (options) {
                         } else if (type === 'ajax' && 'modal' in ajaxSettings && ajaxSettings.modal === true) {
                             modalUse = true;
                         }
-
                         if (modalUse === true) {
                             $dowElement.addClass('event-clickable');
 

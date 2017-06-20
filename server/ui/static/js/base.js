@@ -58,22 +58,20 @@ function render_project(proj_path,color) {
 	success: function(result) {
 	    db = JSON.parse(result);
             nb = new acorn.Notebook(db, proj_path);
+	    window.curr_nb = nb
 	    var dates = nb.listDates();
 	    var eventdata = [];
 	    for(i=0;i<dates.length; i++) {
-		eventdata.push({"date": dateFormat(dates[i], "isoDate")});
+		eventdata.push({"date": dateFormat(dates[i], "isoDate"),"color":color});
 	    }
-	    $('#body').html('<div id="my-calendar"></div></div>');
-	    $('#my-calendar').zabuto_calendar({ year: 2016, month: 10, data: eventdata, action: function() {getDayView(this.id, nb, dates); }});
-	    var cols = document.getElementsByClassName('event');
-	    for(i=0;i<cols.length; i++) {
-		cols[i].style.backgroundColor=color;
-	    }
+	    $('#body').html('<div id="my-calendar"></div><div id="DayView"></div>');
+	    $('#my-calendar').zabuto_calendar({ year: 2016, month: 10, data: eventdata, action: function() {getDayView(this.id, dates); }});
 	}
     });
 }
 
-function getDayView(id,nb,dates) {
+function getDayView(id,dates) {
+    var nb = window.curr_nb
     var date = $("#"+id).data("date");
     for(i=0;i<dates.length;i++) {
 	if (date == dateFormat(dates[i], "isoDate")) {
@@ -90,56 +88,77 @@ function getDayView(id,nb,dates) {
 		Obj.parentNode.removeChild(Obj);
 	    }
 
-	    var day_view = document.createElement("table");
-	    day_view.setAttribute("id","Calendar Day View");
-	    day_view.style.width = '40%';
-	    day_view.style.border = 'thin solid #000000';
-	    
-	    // var dayTable = "<table><tr><th style='width: 100px;'>Hour</th>"
-	    // dayTable += "<th style='width:200px;'>Number of entries</th></tr>"
-
-	    var pos = 0;
+	    // var day_view = document.createElement("table");
+	    // day_view.setAttribute("id","Calendar Day View");
+	    // day_view.style.width = '40%';
+	    // day_view.style.border = 'thin solid #000000';
+	    // var tbl = document.createElement('div');
+	    // tbl.setAttribute('id', 'Calendar Day View');
+	    // var dayTable = "<table border=1 style='width:35%; float:left;'><tr><th style='width:50%; text-align:center;' colspan='2'>Hour</th><th style='width:50%; text-align:center;'>Number of entries</th></tr>"
+	    var view = {};
+	    view["hours"] = [];
 	    for (hour in intervals) {
-		var blocks = ld.getBlocks(hour);
-		// for (var i=0; i< blocks.length; i++) {
-		// 	console.log(blocks[i]);
-		// 	var time_str = String(blocks[i]["timestamp"]);
-		// 	console.log(time_str);
-		// 	time_str = time_str.split(" ");
-		// 	time_str = time_str[4].split(":");
-		// 	console.log(time_str[2]);
-		// }
-		var row = day_view.insertRow(pos);
-		var cell1 = row.insertCell(0);
-		var cell2 = row.insertCell(1);
-		cell1.innerHTML = hour;
-		cell2.innerHTML = '<p onclick="get_detailed_view()">'+blocks.length + '</p>';
-		cell1.style.border = 'thin solid #000000';
-		cell2.style.border = 'thin solid #000000';
-		pos += 1;
-		// dayTable += "<tr><td style='width: 100px;'>"+hour+"</td>";
-		// dayTable += "<td style='width: 100px;'>"+blocks.length+"</td></tr>"
-		// console.log(hour);
-		// console.log(ld.getBlocks(hour));
+		var temp_view = {};
+		temp_view["hour"] = hour;
+	    	var blocks = ld.getBlocks(hour);
+		var first_blocks = [];
+		var last_blocks = [];
+	    	for (var i=0; i< blocks.length; i++) {
+	    	    var time_str = String(blocks[i]["timestamp"]);
+	    	    time_str = time_str.split(" ");
+	    	    time_str = time_str[4].split(":");
+		    if (+time_str[1] < 30) {
+			first_blocks.push(blocks[i]);
+		    } else {
+			last_blocks.push(blocks[i]);
+		    }
+	    	}
+		temp_view["first"] = first_blocks.length;
+		temp_view["second"] = last_blocks.length;
+		view["hours"].push(temp_view);
+		// var details = get_detailed_view_html(first_blocks);
+	    	// dayTable += "<tr><td style='text-align:center;' rowspan='2'>"+hour+"</td><td style='text-align:center;'> 00-29 </td><td style='text-align:center; cursor:pointer;' onmouseover='' onclick=function(){insert_detailed_view("+first_blocks+")}'>"+first_blocks.length+"</td></tr>"
+		// var details = get_detailed_view_html(last_blocks);
+		// dayTable += "<tr><td style='text-align:center;'> 30-59 </td><td style='text-align:center; cursor:pointer;' onmouseover='' onclick=function(){insert_detailed_view("+last_blocks+")}'>"+last_blocks.length+"</td></tr>"		
 	    }
-	    var header = day_view.createTHead();
-	    var rowh = header.insertRow(0);
-	    var cell1 = rowh.insertCell(0);
-	    var cell2 = rowh.insertCell(1);
-	    cell1.innerHTML = 'Hour';
-	    cell2.innerHTML = 'Number of entries';
-	    cell1.style.border = 'medium solid #000000';
-	    cell2.style.border = 'medium solid #000000';
-	    cell1.style.width = '50%';
-	    cell2.style.width = '50%';
-	    day_view.style.textAlign = 'center';
-	    // dayTable += "</table>";
-	    // day_view.innerHTML = dayTable;
-	    document.getElementById("body").appendChild(day_view);
+	    console.log(view);
+	    $("#templates").load("template.html #templateDayView",function() {
+		var template = document.getElementById('templateDayView').innerHTML;
+		console.log(template);
+		var output = Mustache.render(template,view);
+		console.log(output);
+		$("#DayView").html(output);		    
+	    });
+	    console.log("HHH");
+	    // dayTable += "</table>"
+	    // var detailTable = "<table id='Log Details' border=1 style='width:60%; float:right;'><tr><th  colspan='2' style='text-align:center;'>Log Interval Details</th></tr>"
+	    // detailTable += "</table>"
+	    // tbl.innerHTML = dayTable+detailTable;
+	    // var parent = document.getElementById('body');
+	    // parent.parentNode.insertBefore(tbl,parent.nextSibling);
 	}
     }
 }
 
-function get_detailed_view(blocks) {
-    console.log("hello");
+function get_detailed_view_html(blocks) {
+    html = "<tr><th  colspan='2' style='text-align:center;'>Log Interval Details</th></tr>"
+    for (vari=0; i<blocks.length; i++) {
+	html += "<tr><td colspan='2' style='text-align:center';>"+blocks[i]["timestamp"]+"</td></tr>";
+	html += "<tr><td style='text-align:center;'>method</td><td style='text-align:center>"+blocks[i]["method"]+"</td></tr>";
+	html += "<tr><td style='text-align:center;'>code</td><td style='text-align:center cursor:pointer;' onmouseover=''>view code</td></tr>";
+	html += "<tr><td style='text-align:center;'>arguments</td><td style='text-align:center' cursor:pointer;' onmouseover=''>view arguments</td></tr>";
+        if (blocks[i]["instance"] != null) {
+	        html += "<tr><td style='text-align:center;'>instance</td><td style='text-align:center'>"+blocks[i]["instance"]+"</td></tr>";
+        }
+        if (blocks[i]["elapsed"] != null) {
+	        html += "<tr><td style='text-align:center;'>elapsed</td><td style='text-align:center'>"+blocks[i]["elpased"]+"</td></tr>";
+        }
+	html += "<tr><td style='text-align:center;'>returns</td><td style='text-align:center' cursor:pointer;' onmouseover=''>view result</td></tr>";
+	console.log(blocks[i]);
+    }
+    return html
+}
+
+function insert_detailed_view(html) {
+    console.log("Hello");
 }

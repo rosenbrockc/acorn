@@ -1,5 +1,16 @@
 # Revision History
 
+## Revision 0.0.17
+
+- Changed how the table for the day view of projects is created to give
+  us more control over it's format.
+- Added get_detailed_view_html in serever/ui/static/js/base.js. This
+  function will create the nice views of the log interval details for the
+  user.
+- Fixed a zabuto_calendar so that it correctly takes a color argument
+  to color the dates.
+- Started implementing templates for user views of notebooks.
+
 ## Revision 0.0.16
 
 - Implemented changes in the user interface server. The Project View is almost complete.
