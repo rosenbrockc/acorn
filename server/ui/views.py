@@ -181,3 +181,15 @@ def view_tasks(request):
 
     context_dict = {}
     return render_to_response("ui/view_tasks.html",context_dict,context)    
+
+def day_table(request):
+    context = RequestContext(request)
+    
+    context_dict = {}
+    return render_to_response("ui/day_table.html",context_dict,context)    
+
+def detail_table(request):
+    context = RequestContext(request)
+    
+    context_dict = {}
+    return render_to_response("ui/detail_table.html",context_dict,context)    

@@ -349,14 +349,11 @@ acorn.LogDay = function (nb, intervals, date) {
 */
 acorn.LogDay.prototype.getBlocks = function(hour) {
     if (hour in this.intervals) {
-	// var blocks = [];
-	// for (var index in this.intervals[hour]) {
-	//     var interval = this.intervals[hour][index];
-	//     blocks.push(interval.describe(0));
-	// }
-	var interval = this.intervals[hour];
-	// blocks.push(interval.describe(0));
-	var blocks = interval.describe(0);
+	var blocks = [];
+	for (var index in this.intervals[hour]) {
+	    var interval = this.intervals[hour][index];
+	    blocks.push(interval.describe(0));
+	}
 	return blocks;
     } else {
 	return [];

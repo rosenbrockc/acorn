@@ -1,0 +1,66 @@
+{% load dictionary_extras %}
+{% load static %}
+
+<div id="templateLogView">
+    <table id="Log Details" border=1 style="width:60%; float:right;">
+      <tr>
+	<th style="text-align:center;">Log Interval Details</th>
+      </tr>
+      {% templatetag openvariable %}#methods{% templatetag closevariable %}
+      <tr>
+	<td style="text-align:center;"><a data-toggle="modal" href="#{% templatetag openvariable %}method{% templatetag closevariable %}"> {% templatetag openvariable %}method{% templatetag closevariable %} ({% templatetag openvariable %}rep{% templatetag closevariable %})</a></td>
+      </tr>
+      {% templatetag openvariable %}/methods{% templatetag closevariable %}
+    </table>
+
+    {% templatetag openvariable %}#methods{% templatetag closevariable %}
+    <div id="{% templatetag openvariable %}method{% templatetag closevariable %}" style="display:none;" class="modal">
+      <div class="modal-header">
+	<button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+      </div>
+      <div class="modal-body">
+	<table border=1 style="width:100%">
+	  <tr>
+	    <th style="text-align:center;">Time</th>
+	    <th style="text-align:center;">Code</th>
+	    <th style="text-align:center;">Args</th>
+	    <th style="text-align:center;">Returns</th>
+	  </tr>
+	  {% templatetag openvariable %}#reps{% templatetag closevariable %}
+	  <tr>
+	    <td style="text-align:center;">{% templatetag openvariable %}time{% templatetag closevariable %}</td>
+	    <td style="text-align:center"><a data-toggle="modal" href="#{% templatetag openvariable %}method{% templatetag closevariable %}{% templatetag openvariable %}time{% templatetag closevariable %}code">source code</a></td>
+	    {% templatetag openvariable %}#args{% templatetag closevariable %}
+	    <td style="text-align:center;">{% templatetag openvariable %}arg{% templatetag closevariable %}</td>
+	    {% templatetag openvariable %}/args{% templatetag closevariable %}
+	    <td style="text-align:center;">{% templatetag openvariable %}return{% templatetag closevariable %}</td>
+	  </tr>
+	  {% templatetag openvariable %}/reps{% templatetag closevariable %}
+	</table>
+      </div>
+      <div class="modal-footer">
+	<button type="button" data-dismiss="modal" class="btn btn-default">Close</button>
+	<button type="button" class="btn btn-primary">Ok</button>
+      </div>
+    </div>
+
+    {% templatetag openvariable %}#reps{% templatetag closevariable %}
+    <div id="{% templatetag openvariable %}method{% templatetag closevariable %}{% templatetag openvariable %}time{% templatetag closevariable %}code" style="display:none;" class="modal">
+      <div class="modal-header">
+	<button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+      </div>
+      <div class="modal-body">
+	{% templatetag openvariable %}#codeLines{% templatetag closevariable %}
+	<p>{% templatetag openvariable %}code{% templatetag closevariable %}</p>
+	{% templatetag openvariable %}/codeLines{% templatetag closevariable %}
+      </div>
+      <div class="modal-footer">
+	<button type="button" data-dismiss="modal" class="btn btn-default">Close</button>
+	<button type="button" class="btn btn-primary">Ok</button>
+      </div>      
+    </div>
+    {% templatetag openvariable %}/reps{% templatetag closevariable %}
+	
+    {% templatetag openvariable %}/methods{% templatetag closevariable %}
+    
+</div>

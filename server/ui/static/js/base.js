@@ -77,24 +77,46 @@ function getDayView(id,dates) {
 	if (date == dateFormat(dates[i], "isoDate")) {
 	    var date_entries = nb.getEntriesByDate(new Date(dates[i]));
 	    var intervals = {};
+	    var hours = [];
 	    for (uuid in date_entries) {
-		var uuid_date = new Date(date_entries[uuid][0]['s']);
-		var temp_interval = new acorn.LogInterval(uuid_date.getHours(),uuid_date.getMinutes(),date_entries[uuid],nb);
-		intervals[uuid_date.getHours()] = temp_interval;
+		var d_entries = date_entries[uuid];
+		var init_date = d_entries[0]['s'];
+		var old_hour = init_date.getHours();
+		var old_min = init_date.getMinutes();
+		var temp_entries = [];
+		for (var j=0; j<d_entries.length; j++ ) {
+		    var uuid_date = new Date(d_entries[j]['s']);
+		    var cur_hour = uuid_date.getHours();
+		    var cur_min = uuid_date.getMinutes();
+		    if (!(cur_hour in intervals)) {
+			intervals[cur_hour] = [];
+		    }
+		    if (cur_hour == old_hour) {
+			if (cur_min == old_min) {
+			    temp_entries.push(d_entries[j]);
+			} else {
+			    var temp_interval = new acorn.LogInterval(cur_hour,old_min,temp_entries,nb)
+			    intervals[cur_hour].push(temp_interval);
+			    temp_entries = [d_entries[j]];
+			    old_min = cur_min;
+			}
+			
+		    } else {
+			var temp_interval = new acorn.LogInterval(old_hour,old_min,temp_entries,nb)
+			intervals[old_hour].push(temp_interval);
+			old_hour = cur_hour;
+			old_min = cur_min;
+			temp_entries = [d_entries[j]];			
+		    }
+		    
+		    
+		}
+		var temp_interval = new acorn.LogInterval(cur_hour,cur_min,temp_entries,nb)
+		intervals[cur_hour].push(temp_interval);
 	    }
 	    ld = new acorn.LogDay(nb,intervals,new Date(dates[i]));
-	    var Obj = document.getElementById('Calendar Day View');
-	    if(Obj != null) {
-		Obj.parentNode.removeChild(Obj);
-	    }
 
-	    // var day_view = document.createElement("table");
-	    // day_view.setAttribute("id","Calendar Day View");
-	    // day_view.style.width = '40%';
-	    // day_view.style.border = 'thin solid #000000';
-	    // var tbl = document.createElement('div');
-	    // tbl.setAttribute('id', 'Calendar Day View');
-	    // var dayTable = "<table border=1 style='width:35%; float:left;'><tr><th style='width:50%; text-align:center;' colspan='2'>Hour</th><th style='width:50%; text-align:center;'>Number of entries</th></tr>"
+	    window.curr_log_day = ld;
 	    var view = {};
 	    view["hours"] = [];
 	    for (hour in intervals) {
@@ -104,61 +126,154 @@ function getDayView(id,dates) {
 		var first_blocks = [];
 		var last_blocks = [];
 	    	for (var i=0; i< blocks.length; i++) {
-	    	    var time_str = String(blocks[i]["timestamp"]);
+	    	    var time_str = String(blocks[i][0]["timestamp"]);
 	    	    time_str = time_str.split(" ");
 	    	    time_str = time_str[4].split(":");
 		    if (+time_str[1] < 30) {
-			first_blocks.push(blocks[i]);
+			for (var j in blocks[i]) {
+			    first_blocks.push(blocks[i][j]);
+			}
 		    } else {
-			last_blocks.push(blocks[i]);
+			for (var j in blocks[i]) {			
+			    last_blocks.push(blocks[i][j]);
+			}
 		    }
 	    	}
 		temp_view["first"] = first_blocks.length;
 		temp_view["second"] = last_blocks.length;
 		view["hours"].push(temp_view);
-		// var details = get_detailed_view_html(first_blocks);
-	    	// dayTable += "<tr><td style='text-align:center;' rowspan='2'>"+hour+"</td><td style='text-align:center;'> 00-29 </td><td style='text-align:center; cursor:pointer;' onmouseover='' onclick=function(){insert_detailed_view("+first_blocks+")}'>"+first_blocks.length+"</td></tr>"
-		// var details = get_detailed_view_html(last_blocks);
-		// dayTable += "<tr><td style='text-align:center;'> 30-59 </td><td style='text-align:center; cursor:pointer;' onmouseover='' onclick=function(){insert_detailed_view("+last_blocks+")}'>"+last_blocks.length+"</td></tr>"		
 	    }
-	    console.log(view);
-	    $("#templates").load("template.html #templateDayView",function() {
-		var template = document.getElementById('templateDayView').innerHTML;
-		console.log(template);
-		var output = Mustache.render(template,view);
-		console.log(output);
-		$("#DayView").html(output);		    
-	    });
-	    console.log("HHH");
-	    // dayTable += "</table>"
-	    // var detailTable = "<table id='Log Details' border=1 style='width:60%; float:right;'><tr><th  colspan='2' style='text-align:center;'>Log Interval Details</th></tr>"
-	    // detailTable += "</table>"
-	    // tbl.innerHTML = dayTable+detailTable;
-	    // var parent = document.getElementById('body');
-	    // parent.parentNode.insertBefore(tbl,parent.nextSibling);
+	    
+	    (function(view){$.when($.ajax({url: 'http://127.0.0.1:8000/day_table/'}))
+		.done(function(template) {
+		    Mustache.parse(template);
+		    var rendered = Mustache.render(template,view);
+		    $("#DayView").html(rendered);		    
+		})
+		.fail(function(){
+		    alert("sorry there was an error.");
+		});})(view);
 	}
     }
 }
 
-function get_detailed_view_html(blocks) {
-    html = "<tr><th  colspan='2' style='text-align:center;'>Log Interval Details</th></tr>"
-    for (vari=0; i<blocks.length; i++) {
-	html += "<tr><td colspan='2' style='text-align:center';>"+blocks[i]["timestamp"]+"</td></tr>";
-	html += "<tr><td style='text-align:center;'>method</td><td style='text-align:center>"+blocks[i]["method"]+"</td></tr>";
-	html += "<tr><td style='text-align:center;'>code</td><td style='text-align:center cursor:pointer;' onmouseover=''>view code</td></tr>";
-	html += "<tr><td style='text-align:center;'>arguments</td><td style='text-align:center' cursor:pointer;' onmouseover=''>view arguments</td></tr>";
-        if (blocks[i]["instance"] != null) {
-	        html += "<tr><td style='text-align:center;'>instance</td><td style='text-align:center'>"+blocks[i]["instance"]+"</td></tr>";
-        }
-        if (blocks[i]["elapsed"] != null) {
-	        html += "<tr><td style='text-align:center;'>elapsed</td><td style='text-align:center'>"+blocks[i]["elpased"]+"</td></tr>";
-        }
-	html += "<tr><td style='text-align:center;'>returns</td><td style='text-align:center' cursor:pointer;' onmouseover=''>view result</td></tr>";
-	console.log(blocks[i]);
+function get_detailed_view(hour,spot) {
+    var nb = window.curr_nb
+    var ld = window.curr_log_day;
+    var blocks = ld.getBlocks(hour);
+    var first_blocks = [];
+    var last_blocks = [];
+    for (var i=0; i< blocks.length; i++) {
+	var time_str = String(blocks[i][0]["timestamp"]);
+	time_str = time_str.split(" ");
+	time_str = time_str[4].split(":");
+	if (+time_str[1] < 30) {
+	    for (var j in blocks[i]) {			
+		first_blocks.push(blocks[i][j]);
+	    }
+	} else {
+	    for (var j in blocks[i]) {			
+		last_blocks.push(blocks[i][j]);
+	    }
+	}
     }
-    return html
-}
+    if (spot === 'f') {
+	blocks = first_blocks;
+    } else {
+	blocks = last_blocks;
+    }
 
-function insert_detailed_view(html) {
-    console.log("Hello");
+    var detail_dict = {};
+    detail_dict["methods"] = [];
+    var methods = [];
+    for (var i=0; i<blocks.length; i++) {
+	var def = blocks[i]["method"];
+	def = def.split(".");
+	def = def[def.length-1];
+	if ($.inArray(def,methods) <0) {
+	    methods.push(def);
+	    var method_dict = {};
+	    method_dict["method"] = def;
+	    method_dict["rep"] = 1;
+	    method_dict["reps"] = [];
+	    var rep_dict = {}
+	    var time_str = String(blocks[i]["timestamp"]);
+	    time_str = time_str.split(" ");
+	    time_str = time_str[4];
+	    rep_dict["time"] = time_str;
+	    if (blocks[i]["args"]["n_posargs"] < 1) {
+		var args_list = [];
+		var arg_dict = {};
+		arg_dict["arg"] = "()"
+		args_list.push(arg_dict);
+		rep_dict["args"] = args_list;
+	    } else {
+		var args_list = [];
+		for (var j= 0; j < blocks[i]["args"]["n_posargs"]; j++) {
+		    var arg_dict = {};
+		    arg_dict["arg"]= blocks[i]["args"][j]["value"];
+		    args_list.push(arg_dict);
+		}
+		rep_dict["args"] = args_list;
+	    }
+	    rep_dict["return"] = blocks[i]["return"];
+	    rep_dict["codeLines"] = [];
+	    for (var k in blocks[i]["code"]) {
+		var code = {};
+		code["code"] = blocks[i]["code"][k];
+		rep_dict["codeLines"].push(code);
+	    }
+	    method_dict["reps"].push(rep_dict);
+	    for (var k=i+1; k<blocks.length; k++) {
+		var def_j = blocks[k]["method"].split(".");
+		def_j = def_j[def_j.length-1];
+		if (def_j == def) {
+		    rep_dict = {};
+		    var time_str = String(blocks[k]["timestamp"]);
+		    time_str = time_str.split(" ");
+		    time_str = time_str[4];
+		    rep_dict["time"] = time_str;
+		    if (blocks[i]["args"]["n_posargs"] < 1) {
+			var args_list = [];
+			var arg_dict = {};
+			arg_dict["arg"] = "()"
+			args_list.push(arg_dict);
+			rep_dict["args"] = args_list;
+		    } else {
+			var args_list = [];
+			for (var j= 0; j < blocks[i]["args"]["n_posargs"]; j++) {
+			    var arg_dict = {};
+			    arg_dict["arg"]= blocks[i]["args"][j]["value"];
+			    args_list.push(arg_dict);
+			}
+			rep_dict["args"] = args_list;
+		    }
+		    rep_dict["return"] = blocks[k]["return"];
+		    rep_dict["codeLines"] = [];
+		    for (var j in blocks[k]["code"]) {
+			var code = {};
+			code["code"] = blocks[k]["code"][j];
+			rep_dict["codeLines"].push(code);
+		    }
+		    method_dict["reps"].push(rep_dict);
+		    method_dict["rep"] += 1;
+		}
+	    }
+	    detail_dict["methods"].push(method_dict);
+	}
+    }
+    var Obj = document.getElementById('templateLogView');
+    if(Obj != null) {
+    	Obj.parentNode.removeChild(Obj);
+    }
+    (function(detail_dict){$.when($.ajax({url: 'http://127.0.0.1:8000/detail_table/'}))
+			   .done(function(template) {
+			       Mustache.parse(template);
+			       var rendered = Mustache.render(template,detail_dict);
+			       $("#DayView").append(rendered);		    
+			   })
+			   .fail(function(){
+			       alert("sorry there was an error.");
+			   });})(detail_dict);
+
 }

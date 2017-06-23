@@ -1,5 +1,18 @@
 # Revision History
 
+## Revision 0.0.18
+- Removed server/templates/ui/templates.html. Replaced it with
+  day_table.html and detail_table.html. Also added views for the new
+  html pages and added them to the urls list in server/server/urls.py.
+- Rewrote get_detail_view_html in server/ui/static/js/base.js to work
+  with mustache templates.
+- Added jquerry.modal.js and jquerry.modal.css to server/ui/static/js/
+  and servel/ui/static/css respectively for the rendering of modal's
+  in the ui html.
+-Implemented changes to try and get a second simultaneous modal window
+ to open.
+-Implemented deeper parsing on the args method being passed to the html.
+
 ## Revision 0.0.17
 
 - Changed how the table for the day view of projects is created to give

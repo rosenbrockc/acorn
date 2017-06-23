@@ -30,6 +30,7 @@ urlpatterns = [
     url(r'^sub_nav_list/$',views.sub_nav_list,name="sub_nav_list"),
     url(r'^view_proj/$',views.view_proj,name="view_proj"),
     url(r'^view_tasks/$',views.view_tasks,name="view_tasks"),
-    url(r'^static/(?P<path>.*)$', never_cache(serve_static)),
-    
+    url(r'^day_table/$',views.day_table,name="day_table"),
+    url(r'^detail_table/$',views.detail_table,name="detail_table"),
+    url(r'^static/(?P<path>.*)$', never_cache(serve_static)),    
  ]

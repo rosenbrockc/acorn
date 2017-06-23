@@ -1,10 +1,24 @@
 {% load dictionary_extras %}
 {% load static %}
 
-<table id="hour list" border=1 class="inlineTable">
-  <tr><th>Hour</th><th>Number of Entries</th></tr>
-</table>
+<div id="templateDayView">
+  <table border=1 style='width:35%; float:left;'>
+    <tr>
+      <th style='width:50%; text-align:center;' colspan='2'>Hour</th>
+      <th style='width:50%; text-align:center;'>Number of entries</th>
+    </tr>
 
-<table id="detailed view" border=1 class="inlineTable">
-  <tr><th>Log Interval Description</th></tr>
-</table>
+    {% templatetag openvariable %}#hours{% templatetag closevariable %}
+    <tr>
+      <td style='text-align:center;' rowspan='2'>{% templatetag openvariable %}hour{% templatetag closevariable %}</td>
+      <td style='text-align:center;'> 00-29 </td>
+      <td style='text-align:center; cursor:pointer;' onmouseover='' onclick="get_detailed_view({% templatetag openvariable %}hour{% templatetag closevariable %},'f')">{% templatetag openvariable %}first{% templatetag closevariable %}</td>
+    </tr>
+    <tr>
+      <td style='text-align:center;'> 30-59 </td>
+      <td style='text-align:center; cursor:pointer;' onmouseover='' onclick="get_detailed_view({% templatetag openvariable %}hour{% templatetag closevariable %},'s')">{% templatetag openvariable %}second{% templatetag closevariable %}</td>
+    </tr>
+    {% templatetag openvariable %}/hours{% templatetag closevariable %}
+  </table>
+
+</div>
