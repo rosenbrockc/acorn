@@ -1,5 +1,9 @@
 # Revision History
 
+## Revision 0.0.19
+- Updates to the detail_table.html template. I've almost got the nested modals working I think.
+- Removed some unused javascript and css files.
+
 ## Revision 0.0.18
 - Removed server/templates/ui/templates.html. Replaced it with
   day_table.html and detail_table.html. Also added views for the new

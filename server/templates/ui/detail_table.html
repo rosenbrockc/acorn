@@ -14,50 +14,60 @@
     </table>
 
     {% templatetag openvariable %}#methods{% templatetag closevariable %}
-    <div id="{% templatetag openvariable %}method{% templatetag closevariable %}" style="display:none;" class="modal">
-      <div class="modal-header">
-	<button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
-      </div>
-      <div class="modal-body">
-	<table border=1 style="width:100%">
-	  <tr>
-	    <th style="text-align:center;">Time</th>
-	    <th style="text-align:center;">Code</th>
-	    <th style="text-align:center;">Args</th>
-	    <th style="text-align:center;">Returns</th>
-	  </tr>
-	  {% templatetag openvariable %}#reps{% templatetag closevariable %}
-	  <tr>
-	    <td style="text-align:center;">{% templatetag openvariable %}time{% templatetag closevariable %}</td>
-	    <td style="text-align:center"><a data-toggle="modal" href="#{% templatetag openvariable %}method{% templatetag closevariable %}{% templatetag openvariable %}time{% templatetag closevariable %}code">source code</a></td>
-	    {% templatetag openvariable %}#args{% templatetag closevariable %}
-	    <td style="text-align:center;">{% templatetag openvariable %}arg{% templatetag closevariable %}</td>
-	    {% templatetag openvariable %}/args{% templatetag closevariable %}
-	    <td style="text-align:center;">{% templatetag openvariable %}return{% templatetag closevariable %}</td>
-	  </tr>
-	  {% templatetag openvariable %}/reps{% templatetag closevariable %}
-	</table>
-      </div>
-      <div class="modal-footer">
-	<button type="button" data-dismiss="modal" class="btn btn-default">Close</button>
-	<button type="button" class="btn btn-primary">Ok</button>
+    <div id="{% templatetag openvariable %}method{% templatetag closevariable %}" class="modal">
+      <div class="modal-dialag">
+	<div class="modal-content">
+	  <div class="modal-header">
+	    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+	    <h4 class="modal-title">{% templatetag openvariable %}method{% templatetag closevariable %}</h4>
+	  </div>
+	  <div class="container"></div>
+	  <div class="modal-body">
+	    <table border=1 style="width:100%">
+	      <tr>
+		<th style="text-align:center;">Time</th>
+		<th style="text-align:center;">Code</th>
+		<th style="text-align:center;">Args</th>
+		<th style="text-align:center;">Returns</th>
+	      </tr>
+	      {% templatetag openvariable %}#reps{% templatetag closevariable %}
+	      <tr>
+		<td style="text-align:center;">{% templatetag openvariable %}time{% templatetag closevariable %}</td>
+		<td style="text-align:center"><a data-toggle="modal" href="#{% templatetag openvariable %}method{% templatetag closevariable %}{% templatetag openvariable %}time{% templatetag closevariable %}code" class="btn">source code</a></td>
+		{% templatetag openvariable %}#args{% templatetag closevariable %}
+		<td style="text-align:center;">{% templatetag openvariable %}arg{% templatetag closevariable %}</td>
+		{% templatetag openvariable %}/args{% templatetag closevariable %}
+		<td style="text-align:center;">{% templatetag openvariable %}return{% templatetag closevariable %}</td>
+	      </tr>
+	      {% templatetag openvariable %}/reps{% templatetag closevariable %}
+	    </table>
+	  </div>
+	  <div class="modal-footer">
+	    <a data-dismiss="modal" class="btn">Close</a>
+	  </div>
+	</div>
       </div>
     </div>
 
     {% templatetag openvariable %}#reps{% templatetag closevariable %}
-    <div id="{% templatetag openvariable %}method{% templatetag closevariable %}{% templatetag openvariable %}time{% templatetag closevariable %}code" style="display:none;" class="modal">
-      <div class="modal-header">
-	<button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+    <div id="{% templatetag openvariable %}method{% templatetag closevariable %}{% templatetag openvariable %}time{% templatetag closevariable %}code" class="modal">
+      <div class="modal-dialog">
+	<div class="moda-header">
+	  <div class="modal-header">
+	    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+	    <h4 class="modal-title">Source Code</h4>
+	  </div>
+	  <div class="container"></div>
+	  <div class="modal-body">
+	    {% templatetag openvariable %}#codeLines{% templatetag closevariable %}
+	    <p>{% templatetag openvariable %}code{% templatetag closevariable %}</p>
+	    {% templatetag openvariable %}/codeLines{% templatetag closevariable %}
+	  </div>
+	  <div class="modal-footer">
+	    <button type="button" data-dismiss="modal" class="btn">Close</button>
+	  </div>      
+	</div>
       </div>
-      <div class="modal-body">
-	{% templatetag openvariable %}#codeLines{% templatetag closevariable %}
-	<p>{% templatetag openvariable %}code{% templatetag closevariable %}</p>
-	{% templatetag openvariable %}/codeLines{% templatetag closevariable %}
-      </div>
-      <div class="modal-footer">
-	<button type="button" data-dismiss="modal" class="btn btn-default">Close</button>
-	<button type="button" class="btn btn-primary">Ok</button>
-      </div>      
     </div>
     {% templatetag openvariable %}/reps{% templatetag closevariable %}
 	
