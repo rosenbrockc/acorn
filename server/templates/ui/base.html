@@ -11,26 +11,27 @@
     <!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
     <meta name="description" content="">
     <meta name="author" content="">
-    <!-- <link rel="icon" href="../../favicon.ico"> -->
 
     <title>Acorn</title>
 
     <script type="text/javascript" src="https://www.dropbox.com/static/api/2/dropins.js" id="dropboxjs" data-app-key="nmpkzdntiqspphg"></script>
     <script src="{% static 'js/acorn.js' %}"></script>
+
     <!-- Bootstrap core CSS -->
     <link href="{% static 'css/bootstrap.min.css' %}" rel="stylesheet">
     <link href="{% static 'css/sticky-footer-navbar.css' %}" rel="stylesheet">
+    <link href="{% static 'css/prism.css' %}" rel="stylesheet">
   </head>
-
   <body>
 
-    <div class="container">
+
+    <div id="navs" class="container" style="z-index:-100">
 
       <!-- Static navbar -->
-      <nav class="navbar navbar-default navbar-fixed-top">
-        <div class="container">
-          <div class="navbar-header">
-            <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
+      <nav id="master_nav" class="navbar navbar-default navbar-fixed-top"  style="z-index:2">
+        <div class="container" style="z-index:10">
+          <div class="navbar-header" style="z-index:10">
+            <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar" style="z-index:10">
               <span class="sr-only">Toggle navigation</span>
               <span class="icon-bar"></span>
               <span class="icon-bar"></span>
@@ -40,35 +41,12 @@
 	      <img style="max-width:50px; margin-top: -10px"
     		   src="{% static "acorn-sm.png" %}"/></a>
           </div>
-          <div id="navbar" class="collapse navbar-collapse navbar-ex1-collapse">
-            <ul class="nav navbar-nav">
-              <li class="active"><a href="/">Home</a></li>
-              <li><a href="/about/">About</a></li>
+          <div id="navbar" class="collapse navbar-collapse navbar-ex1-collapse"  style="z-index:0">
+            <ul class="nav navbar-nav" style="z-index:0">
+              <li class="active" style="z-index:0"><a href="/" style="z-index:0">Home</a></li>
+              <li style="z-index:0"><a href="/about/" style="z-index:0">About</a></li>
 	      
-              <li class="menu-item dropdown">
-		<a href="#" class="dropdown-toggle" data-toggle="dropdown">Projects</a>
-    		<ul class="dropdown-menu">
-    		  <!-- <ul class="list-inline"> -->
-    		  <ul>
-    		    {% for proj in projects %}
-    		    {% for task in projects|access:proj %}
-		    {% if task == "hex_color" %}
-    		    <ul class="menu-item dropdown dropdown-submenu" style="background-color:{{projects|access:proj|access:task}};"><a href="#" class="dropdown-toggle" data-toggle="dropdown">{{proj}}</a>
-		      {% endif %}
-    		      {% endfor %}
-    		      <ul class="dropdown-menu">
-    			<!-- <ul class="list-inline"> -->
-    			  {% for task in projects|access:proj %}
-			  {% if task != "hex_color" %}
-    			  <li><a href="#">{{task}}</a></li>
-			  {% endif %}
-    			  {% endfor %}
-    			<!-- </ul> -->
-    		      </ul>
-    		    </ul>
-    		    {% endfor %}
-    		  </ul>
-    		</ul>
+              <li id="projects" style="z-index:0"><a href="javascript:void(0);" style="z-index:10">Projects</a>
     	      </li>
               <li><a href="/daily_log">Daily Log</a></li>
             </ul>
@@ -76,13 +54,14 @@
         </div><!--/.container-fluid -->
       </nav>
 
-      <div class="default">
+      <div id="body" class="default" syle="z-index:-10">
     	{% block body_block %}
-    	Nothing to show here yet.
     	{% endblock %}
+	<div id="my-calendar"></div>
       </div>
 
     </div> <!-- /container -->
+
     <footer class="footer">
       <div class="container">
 	<div class="row">
@@ -95,48 +74,15 @@
 	</div>
       </div>
     </footer>
-
-    <!-- Bootstrap core JavaScript -->
-    <!-- Placed at the end of the document so the pages load faster -->
-        <!-- <p id="hello">Tester FIle API</p> -->
-
-	<!-- <button onclick="foo()">Try it</button> -->
-
-	<!-- <script> -->
-	<!--   options = { -->
-
-	<!--   // Required. Called when a user selects an item in the Chooser. -->
-	<!--   success: function(files) { -->
-        <!--   alert("Here's the file link: " + files[0].link) -->
-	<!--   }, -->
-	  
-	<!--   // Optional. Called when the user closes the dialog without selecting a file -->
-	<!--   // and does not include any parameters. -->
-	<!--   cancel: function() { -->
-	  
-	<!--   }, -->
-	  
-	<!--   // Optional. "preview" (default) is a preview link to the document for sharing, -->
-	<!--   // "direct" is an expiring link to download the contents of the file. For more -->
-	<!--   // information about link types, see Link types below. -->
-	<!--   linkType: "preview", // or "direct" -->
-	  
-	<!--   // Optional. A value of false (default) limits selection to a single file, while -->
-	<!--   // true enables multiple file selection. -->
-	<!--   multiselect: false, // or true -->
-	  
-	<!--   // Optional. This is a list of file extensions. If specified, the user will -->
-	<!--   // only be able to select files with these extensions. You may also specify -->
-	<!--   // file types, such as "video" or "images" in the list. For more information, -->
-	<!--   // see File types below. By default, all extensions are allowed. -->
-	<!--   extensions: ['.pdf', '.doc', '.docx'], -->
-	<!--   }; -->
-	<!--   var foo = function(){ -->
-	<!--   var button = Dropbox.createChooseButton(options); -->
-	<!--   document.body.appendChild(button); -->
-	  
-	<!--   };    </script> -->
     <script src="{% static 'js/jquery-ajax.min.js' %}"></script>
     <script src="{% static 'js/bootstrap.min.js' %}"></script>
+    <script src="{% static 'js/prism.js' %}"></script>
+    <script src="http://underscorejs.org/underscore-min.js"></script>
+    <script src="{% static 'js/date.format.js' %}"></script>
+    <script src="{% static 'js/zabuto_calendar.js' %}"></scritp>
+    <script src="{% static 'js/zabuto_calendar.min.js' %}"></scritp>
+    <script src="{% static 'js/acorn.js' %}"></script>
+    <script src="{% static 'js/base.js' %}"></script>
+    <script src="{% static 'js/mustache.min.js' %}"></script>
   </body>
 </html>

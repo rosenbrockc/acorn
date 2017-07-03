@@ -1,5 +1,41 @@
 # Revision History
 
+## Revision 0.0.20.
+- Updates to detail_table.html template to create detail view modals.
+- Updates to base.js to get the details needed for the template.
+
+## Revision 0.0.19
+- Updates to the detail_table.html template. I've almost got the nested modals working I think.
+- Removed some unused javascript and css files.
+
+## Revision 0.0.18
+- Removed server/templates/ui/templates.html. Replaced it with
+  day_table.html and detail_table.html. Also added views for the new
+  html pages and added them to the urls list in server/server/urls.py.
+- Rewrote get_detail_view_html in server/ui/static/js/base.js to work
+  with mustache templates.
+- Added jquerry.modal.js and jquerry.modal.css to server/ui/static/js/
+  and servel/ui/static/css respectively for the rendering of modal's
+  in the ui html.
+-Implemented changes to try and get a second simultaneous modal window
+ to open.
+-Implemented deeper parsing on the args method being passed to the html.
+
+## Revision 0.0.17
+
+- Changed how the table for the day view of projects is created to give
+  us more control over it's format.
+- Added get_detailed_view_html in serever/ui/static/js/base.js. This
+  function will create the nice views of the log interval details for the
+  user.
+- Fixed a zabuto_calendar so that it correctly takes a color argument
+  to color the dates.
+- Started implementing templates for user views of notebooks.
+
+## Revision 0.0.16
+
+- Implemented changes in the user interface server. The Project View is almost complete.
+
 ## Revision 0.0.15
 
 - Added the new `ipython.js` file to the package data for acorn so that it gets

@@ -16,9 +16,21 @@ Including another URLconf
 from django.conf.urls import url
 from django.contrib import admin
 from ui import views
+from django.conf import settings
+from django.contrib.staticfiles.views import serve as serve_static
+from django.views.decorators.cache import never_cache
+
 urlpatterns = [
     url(r'^admin/', admin.site.urls),
     url(r'^$', views.index,name="index"),
     url(r'^about/$',views.about,name="about"),
     url(r'^daily_log/$',views.dailyLog,name="daily_log"),
+    url(r'^nav/$',views.nav,name="nav"),
+    url(r'^sub_nav/$',views.sub_nav,name="sub_nav"),
+    url(r'^sub_nav_list/$',views.sub_nav_list,name="sub_nav_list"),
+    url(r'^view_proj/$',views.view_proj,name="view_proj"),
+    url(r'^view_tasks/$',views.view_tasks,name="view_tasks"),
+    url(r'^day_table/$',views.day_table,name="day_table"),
+    url(r'^detail_table/$',views.detail_table,name="detail_table"),
+    url(r'^static/(?P<path>.*)$', never_cache(serve_static)),    
  ]

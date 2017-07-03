@@ -22,19 +22,29 @@ if (window.File && window.FileReader && window.FileList && window.Blob) {
     function renderDB(file){
         var reader = new FileReader();
         reader.onload = function(event){
+	    // console.log("event")
+	    // console.log(event)
             source = event.target
+	    // console.log("source")
+	    // console.log(source)
 	    encobj = source.result.split(',')
+	    // console.log(encobj)
 	    if (encobj[0].includes("base64")) {
 		$('#name').html(file.name)
 		$('#size').html(humanFileSize(file.size, "MB"))
 		$('#type').html(file.type)
 		db = JSON.parse(atob(encobj[1]))
+		// console.log("Name")
+		// console.log(file.name)
 		nb = new acorn.Notebook(db, file.name)
 		console.log(nb)
 		console.log(db)
 	    }
         }    
 	//when the file is read it triggers the onload event above.
+	// console.log("Prefile");
+	// console.log(file);
+	// console.log("Postfile");
         reader.readAsDataURL(file);
     }
   
@@ -42,10 +52,12 @@ if (window.File && window.FileReader && window.FileList && window.Blob) {
     $('#acorndb').change(function() {
         //grab the first image in the fileList
         //in this example we are only loading one file.
-        console.log(this.files[0].size)
+	// console.log("first")
+        // console.log(this.files[0].size)
+	// console.log(this.files[0])
         renderDB(this.files[0])
     });
-    console.log("Loaded")  
+    // console.log("Loaded")  
 } else {
   alert('The File APIs are not fully supported in this browser.');
 

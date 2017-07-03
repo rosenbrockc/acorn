@@ -1,0 +1,143 @@
+{% load dictionary_extras %}
+{% load static %}
+
+<div id="templateLogView">
+    <table id="Log Details" border=1 style="width:60%; float:right;">
+      <tr>
+    	<th style="text-align:center;">Log Interval Details</th>
+      </tr>
+      {% templatetag openvariable %}#methods{% templatetag closevariable %}
+      <tr>
+    	<td style="text-align:center;"><a data-toggle="modal" href="#{% templatetag openvariable %}method{% templatetag closevariable %}"> {% templatetag openvariable %}method{% templatetag closevariable %} ({% templatetag openvariable %}rep{% templatetag closevariable %})</a></td>
+      </tr>
+      {% templatetag openvariable %}/methods{% templatetag closevariable %}
+    </table>
+
+    {% templatetag openvariable %}#methods{% templatetag closevariable %}
+    <div class="modal" id="{% templatetag openvariable %}method{% templatetag closevariable %}">
+      <div class="modal-dialog  modal-lg">
+	<div class="modal-content">
+          <div class="modal-header">
+	    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+	    <h4 class="modal-title">{% templatetag openvariable %}method{% templatetag closevariable %}</h4>
+          </div><div class="container"></div>
+          <div class="modal-body">
+    	    <table border=1 style="width:100%">
+    	      <tr>
+    		<th style="text-align:center;">Time</th>
+    		<th style="text-align:center;">Code</th>
+    		<th style="text-align:center;">Args</th>
+    		<th style="text-align:center;">Returns</th>
+    	      </tr>
+    	      {% templatetag openvariable %}#reps{% templatetag closevariable %}
+    	      <tr>
+    		<td style="text-align:center;">{% templatetag openvariable %}time{% templatetag closevariable %}</td>
+    		<td style="text-align:center"><a data-toggle="modal" href="#{% templatetag openvariable %}method{% templatetag closevariable %}{% templatetag openvariable %}idx{% templatetag closevariable %}code" class="btn" onclick="decorateCode('{% templatetag openvariable %}method{% templatetag closevariable %}{% templatetag openvariable %}idx{% templatetag closevariable %}codeSyntax')">source code</a></td>
+		<td style="text-align:center;">(
+    		  {% templatetag openvariable %}#args{% templatetag closevariable %}
+    		  {% templatetag openvariable %}#usedetails{% templatetag closevariable %}
+		  <a data-toggle="modal" href="#{% templatetag openvariable %}method{% templatetag closevariable %}{% templatetag openvariable %}idx{% templatetag closevariable %}{% templatetag openvariable %}arg_idx{% templatetag closevariable %}" class="btn">{% templatetag openvariable %}arg{% templatetag closevariable %}</a>
+    		  {% templatetag openvariable %}/usedetails{% templatetag closevariable %}
+    		  {% templatetag openvariable %}^usedetails{% templatetag closevariable %}
+		  {% templatetag openvariable %}arg{% templatetag closevariable %}
+    		  {% templatetag openvariable %}/usedetails{% templatetag closevariable %}
+    		  {% templatetag openvariable %}/args{% templatetag closevariable %})
+		  </td>
+    		<td style="text-align:center;">
+    		  {% templatetag openvariable %}#returns{% templatetag closevariable %}
+    		  {% templatetag openvariable %}#usedetails{% templatetag closevariable %}
+		  <a data-toggle="modal" href="#{% templatetag openvariable %}method{% templatetag closevariable %}{% templatetag openvariable %}idx{% templatetag closevariable %}return" class="btn">{% templatetag openvariable %}return{% templatetag closevariable %}</a>
+    		  {% templatetag openvariable %}/usedetails{% templatetag closevariable %}
+    		  {% templatetag openvariable %}^usedetails{% templatetag closevariable %}
+		  {% templatetag openvariable %}return{% templatetag closevariable %}
+    		  {% templatetag openvariable %}/usedetails{% templatetag closevariable %}
+    		  {% templatetag openvariable %}/returns{% templatetag closevariable %}
+		</td>
+    	      </tr>
+    	      {% templatetag openvariable %}/reps{% templatetag closevariable %}
+    	    </table>
+          </div>
+          <div class="modal-footer">
+	    <a href="#" data-dismiss="modal" class="btn">Close</a>
+
+          </div>
+	</div>
+      </div>
+    </div>
+    {% templatetag openvariable %}/methods{% templatetag closevariable %}
+    
+    {% templatetag openvariable %}#methods{% templatetag closevariable %}
+    {% templatetag openvariable %}#reps{% templatetag closevariable %}
+    <div class="modal" id="{% templatetag openvariable %}method{% templatetag closevariable %}{% templatetag openvariable %}idx{% templatetag closevariable %}code">
+      <div class="modal-dialog">
+	<div class="modal-content">
+          <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+            <h4 class="modal-title">Source Code</h4>
+          </div><div class="container"></div>
+          <div class="modal-body">
+            <pre><code id="{% templatetag openvariable %}method{% templatetag closevariable %}{% templatetag openvariable %}idx{% templatetag closevariable %}codeSyntax" class="language-python">
+		{% templatetag openvariable %}#codeLines{% templatetag closevariable %}
+		{% templatetag openvariable %}code{% templatetag closevariable %}
+		{% templatetag openvariable %}/codeLines{% templatetag closevariable %}
+	    </code></pre>
+          </div>
+          <div class="modal-footer">
+            <a href="#" data-dismiss="modal" class="btn">Close</a>
+          </div>
+	</div>
+      </div>
+    </div>
+    {% templatetag openvariable %}/reps{% templatetag closevariable %}
+    {% templatetag openvariable %}/methods{% templatetag closevariable %}
+    
+    {% templatetag openvariable %}#methods{% templatetag closevariable %}
+    {% templatetag openvariable %}#reps{% templatetag closevariable %}
+    {% templatetag openvariable %}#args{% templatetag closevariable %}
+    <div class="modal" id="{% templatetag openvariable %}method{% templatetag closevariable %}{% templatetag openvariable %}idx{% templatetag closevariable %}{% templatetag openvariable %}arg_idx{% templatetag closevariable %}">
+      <div class="modal-dialog">
+	<div class="modal-content">
+          <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+            <h4 class="modal-title">{% templatetag openvariable %}arg_idx{% templatetag closevariable %} Details</h4>
+          </div><div class="container"></div>
+          <div class="modal-body">
+		{% templatetag openvariable %}#details{% templatetag closevariable %}
+		<p>{% templatetag openvariable %}detail{% templatetag closevariable %}</p>
+		{% templatetag openvariable %}/details{% templatetag closevariable %}
+          </div>
+          <div class="modal-footer">
+            <a href="#" data-dismiss="modal" class="btn">Close</a>
+          </div>
+	</div>
+      </div>
+    </div>
+    {% templatetag openvariable %}/args{% templatetag closevariable %}
+    {% templatetag openvariable %}/reps{% templatetag closevariable %}
+    {% templatetag openvariable %}/methods{% templatetag closevariable %}
+
+    {% templatetag openvariable %}#methods{% templatetag closevariable %}
+    {% templatetag openvariable %}#reps{% templatetag closevariable %}
+    {% templatetag openvariable %}#returns{% templatetag closevariable %}
+    <div class="modal" id="{% templatetag openvariable %}method{% templatetag closevariable %}{% templatetag openvariable %}idx{% templatetag closevariable %}return">
+      <div class="modal-dialog">
+	<div class="modal-content">
+          <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+            <h4 class="modal-title">{% templatetag openvariable %}return{% templatetag closevariable %} Details</h4>
+          </div><div class="container"></div>
+          <div class="modal-body">
+		{% templatetag openvariable %}#details{% templatetag closevariable %}
+		<p>{% templatetag openvariable %}detail{% templatetag closevariable %}</p>
+		{% templatetag openvariable %}/details{% templatetag closevariable %}
+          </div>
+          <div class="modal-footer">
+            <a href="#" data-dismiss="modal" class="btn">Close</a>
+          </div>
+	</div>
+      </div>
+    </div>
+    {% templatetag openvariable %}/returns{% templatetag closevariable %}
+    {% templatetag openvariable %}/reps{% templatetag closevariable %}
+    {% templatetag openvariable %}/methods{% templatetag closevariable %}
+</div>

@@ -236,11 +236,14 @@ acorn.formatEntry = function(entries, uuids, uuid) {
     if (uuid in entries) {
 	//Because the instance methods are all stacked under the same uuid,
 	// we have an array of entries to describe at this level.
-	for (var ientry in entries[uuid]) {
-	    var entry = entries[uuid][ientry];
-	    var call = acorn.formatCall(entry, uuids, uuid);
-	    callarr.push(call);
-	}
+	// for (var ientry in entries[uuid]) {
+	//     var entry = entries[uuid][ientry];
+	//     var call = acorn.formatCall(entry, uuids, uuid);
+	//     callarr.push(call);
+	// }
+	var entry = entries[uuid];
+	var call = acorn.formatCall(entry, uuids, uuid);
+	callarr.push(call);
     } else {
 	callarr.push({"method": null, "args": null, "timestamp": null,
 		      "instance": null, "returns": null, "code": null,
@@ -253,7 +256,7 @@ acorn.formatEntry = function(entries, uuids, uuid) {
 * function calls during this interval, or had their instance methods called.
 */
 acorn.LogInterval.prototype.format = function (uuid) {
-    return acorn.formatEntry(this.entries, this.db.uuids, uuid);
+    return acorn.formatEntry(this.entries, this.nb.db.uuids, uuid);
 };
 /** Describes each of the entries in the specified list.
  * @arg {Array} entries list of entries to describe.

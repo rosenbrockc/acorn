@@ -17,21 +17,4 @@
   </tbody>
 </table>
 
-<script type="text/javascript">
-  function renderDB(file){
-  var reader = new FileReader();
-  var html = '';
-  for(var i in acorn.dbListDates("/Users/wileymorgan/Dropbox/acorn/haul.bcs.json"))
-  {
-    html += '<tr id="'+i+'">';
-    html += '<td>'+i+'</td>';
-    html += '<td><a href="#">'+i+'</a></td>';
-    html += '</tr>';
-  }
-
-  $('#list > tbody').html(html)
-  
-</script>
-
-
 {% endblock %}

@@ -1,0 +1,19 @@
+{% load dictionary_extras %}
+
+<nav id="projects_nav" class="navbar navbar-default clear" style="position:relative;left:-15%;width:150%;top:37pt">
+  <div class="container">
+    <div id="navbar" class="collapse navbar-collapse navbar-ex1-collapse">
+      <ul id="projectsul" class="nav navbar-nav">
+    	{% for proj in projects %}
+    	{% for task in projects|access:proj %}
+	{% if task == "hex_color" %}
+    	<li style="background-color:{{projects|access:proj|access:task}}">
+	  <a href="javascript:void(0);" onclick="create_tasks('{{proj}}')" style="color:black">{{proj}}</a>
+    	</li>
+	{% endif %}
+    	{% endfor %}
+	{% endfor %}
+      </ul>
+    </div><!--/.nav-collapse -->
+  </div><!--/.container-fluid -->
+</nav>
