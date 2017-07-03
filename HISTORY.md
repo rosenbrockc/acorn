@@ -1,5 +1,9 @@
 # Revision History
 
+## Revision 0.0.20.
+- Updates to detail_table.html template to create detail view modals.
+- Updates to base.js to get the details needed for the template.
+
 ## Revision 0.0.19
 - Updates to the detail_table.html template. I've almost got the nested modals working I think.
 - Removed some unused javascript and css files.

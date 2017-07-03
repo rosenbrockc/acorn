@@ -5,7 +5,6 @@ $(document).ready(function() {
 function create_projects() {
     var proj_nav = $('#projects_nav');
     if (proj_nav.length >0) {
-	// console.log(parseInt(proj_nav.css("top").split(".")[0]));
 	if (parseInt(proj_nav.css("top").split(".")[0]) > 0) {
 	    $('#projects_nav').animate({top: "-37pt",},"10");
 	} else {
@@ -23,8 +22,6 @@ function create_projects() {
 
 function create_tasks(proj) {
     var proj_name = '#'+proj
-    // console.log(proj);
-    // console.log($(proj_name).length);
     $.ajax({
     	url: 'http://127.0.0.1:8000/sub_nav/',
     	success: function(result) {
@@ -188,9 +185,12 @@ function get_detailed_view(hour,spot) {
     var methods = [];
     for (var i=0; i<blocks.length; i++) {
 	var def = blocks[i]["method"];
+	console.log("method",def);
+	console.log(blocks[i]);
 	def = def.split(".");
 	def = def[def.length-1];
 	if ($.inArray(def,methods) <0) {
+	    var idx = 1;
 	    methods.push(def);
 	    var method_dict = {};
 	    method_dict["method"] = def;
@@ -204,25 +204,68 @@ function get_detailed_view(hour,spot) {
 	    if (blocks[i]["args"]["n_posargs"] < 1) {
 		var args_list = [];
 		var arg_dict = {};
-		arg_dict["arg"] = "()"
+		arg_dict["arg"] = ""
 		args_list.push(arg_dict);
 		rep_dict["args"] = args_list;
 	    } else {
 		var args_list = [];
 		for (var j= 0; j < blocks[i]["args"]["n_posargs"]; j++) {
 		    var arg_dict = {};
+		    if (blocks[i]["args"][j]["details"] != null) {
+			var details = blocks[i]["args"][j]["details"]
+			var keys = Object.keys(details);
+			detail_list = [];
+			for (var t=0; t<keys.length; t++) {
+			    var loc_detail_dict = {};
+			    if (Object.prototype.toString.call(details[keys[t]]) === '[object Array]') {
+				loc_detail_dict["detail"]=keys[t]+": (" + details[keys[t]]+")";
+			    } else {
+				loc_detail_dict["detail"]=keys[t]+": " + details[keys[t]];
+			    }
+			    detail_list.push(loc_detail_dict);
+			}
+			arg_dict["usedetails"] = true;
+			arg_dict["details"] = detail_list;
+		    }
+		    arg_dict["arg_idx"] = j;
 		    arg_dict["arg"]= blocks[i]["args"][j]["value"];
 		    args_list.push(arg_dict);
 		}
 		rep_dict["args"] = args_list;
 	    }
-	    rep_dict["return"] = blocks[i]["return"];
+	    return_dict = {};
+	    return_list = [];
+	    if (blocks[i]["returns"]["value"] != null) {
+		return_dict["usedetails"] = true;
+		return_dict["return"] = blocks[i]["returns"]["value"];
+		var details = blocks[i]["returns"]["details"]
+		var keys = Object.keys(details);
+		detail_list = [];
+		for (var t=0; t<keys.length; t++) {
+		    var loc_detail_dict = {};
+		    if (Object.prototype.toString.call(details[keys[t]]) === '[object Array]') {
+			loc_detail_dict["detail"]=keys[t]+": (" + details[keys[t]]+")";
+		    } else {
+			loc_detail_dict["detail"]=keys[t]+": " + details[keys[t]];
+		    }
+		    detail_list.push(loc_detail_dict);
+		}
+		return_dict["details"] = detail_list;
+	    } else {
+		return_dict["return"] = "Object";
+	    };
+	    return_list.push(return_dict);
+	    rep_dict["returns"] = return_list;
+	    console.log("return",rep_dict["returns"]);
+
 	    rep_dict["codeLines"] = [];
 	    for (var k in blocks[i]["code"]) {
-		var code = {};
-		code["code"] = blocks[i]["code"][k];
-		rep_dict["codeLines"].push(code);
+	    	var code = {};
+	    	code["code"] = blocks[i]["code"][k];
+	    	rep_dict["codeLines"].push(code);
 	    }
+	    rep_dict["idx"] = idx;
+	    idx = idx + 1;
 	    method_dict["reps"].push(rep_dict);
 	    for (var k=i+1; k<blocks.length; k++) {
 		var def_j = blocks[k]["method"].split(".");
@@ -236,25 +279,44 @@ function get_detailed_view(hour,spot) {
 		    if (blocks[i]["args"]["n_posargs"] < 1) {
 			var args_list = [];
 			var arg_dict = {};
-			arg_dict["arg"] = "()"
+			arg_dict["arg"] = ""
 			args_list.push(arg_dict);
 			rep_dict["args"] = args_list;
 		    } else {
 			var args_list = [];
 			for (var j= 0; j < blocks[i]["args"]["n_posargs"]; j++) {
 			    var arg_dict = {};
+			    if (blocks[i]["args"][j]["details"] != null) {
+				var details = blocks[i]["args"][j]["details"]
+				var keys = Object.keys(details);
+				detail_list = [];
+				for (var t=0; t<keys.length; t++) {
+				    var loc_detail_dict = {};
+				    if (Object.prototype.toString.call(details[keys[t]]) === '[object Array]') {
+					loc_detail_dict["detail"]=keys[t]+": (" + details[keys[t]]+")";
+				    } else {
+					loc_detail_dict["detail"]=keys[t]+": " + details[keys[t]];
+				    }
+				    detail_list.push(loc_detail_dict);
+				}
+				arg_dict["usedetails"] = true;
+				arg_dict["details"] = detail_list;
+			    }
+			    arg_dict["arg_idx"] = j;
 			    arg_dict["arg"]= blocks[i]["args"][j]["value"];
 			    args_list.push(arg_dict);
 			}
 			rep_dict["args"] = args_list;
 		    }
-		    rep_dict["return"] = blocks[k]["return"];
+		    rep_dict["return"] = blocks[k]["returns"];
 		    rep_dict["codeLines"] = [];
 		    for (var j in blocks[k]["code"]) {
-			var code = {};
-			code["code"] = blocks[k]["code"][j];
-			rep_dict["codeLines"].push(code);
+		    	var code = {};
+		    	code["code"] = blocks[k]["code"][j];
+		    	rep_dict["codeLines"].push(code);
 		    }
+		    rep_dict["idx"] = idx;
+		    idx = idx + 1;
 		    method_dict["reps"].push(rep_dict);
 		    method_dict["rep"] += 1;
 		}
@@ -270,10 +332,15 @@ function get_detailed_view(hour,spot) {
 			   .done(function(template) {
 			       Mustache.parse(template);
 			       var rendered = Mustache.render(template,detail_dict);
-			       $("#DayView").append(rendered);		    
+			       $("#DayView").append(rendered);
 			   })
 			   .fail(function(){
 			       alert("sorry there was an error.");
 			   });})(detail_dict);
 
+}  
+
+function decorateCode(id) {
+    var block = document.getElementById(id);
+    Prism.highlightElement(block);
 }

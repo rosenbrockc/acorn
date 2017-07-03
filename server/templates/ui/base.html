@@ -20,6 +20,7 @@
     <!-- Bootstrap core CSS -->
     <link href="{% static 'css/bootstrap.min.css' %}" rel="stylesheet">
     <link href="{% static 'css/sticky-footer-navbar.css' %}" rel="stylesheet">
+    <link href="{% static 'css/prism.css' %}" rel="stylesheet">
   </head>
   <body>
 
@@ -55,7 +56,6 @@
 
       <div id="body" class="default" syle="z-index:-10">
     	{% block body_block %}
-	Nothing goes here yet.
     	{% endblock %}
 	<div id="my-calendar"></div>
       </div>
@@ -76,6 +76,7 @@
     </footer>
     <script src="{% static 'js/jquery-ajax.min.js' %}"></script>
     <script src="{% static 'js/bootstrap.min.js' %}"></script>
+    <script src="{% static 'js/prism.js' %}"></script>
     <script src="http://underscorejs.org/underscore-min.js"></script>
     <script src="{% static 'js/date.format.js' %}"></script>
     <script src="{% static 'js/zabuto_calendar.js' %}"></scritp>
