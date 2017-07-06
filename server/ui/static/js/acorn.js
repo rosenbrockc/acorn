@@ -236,14 +236,11 @@ acorn.formatEntry = function(entries, uuids, uuid) {
     if (uuid in entries) {
 	//Because the instance methods are all stacked under the same uuid,
 	// we have an array of entries to describe at this level.
-	// for (var ientry in entries[uuid]) {
-	//     var entry = entries[uuid][ientry];
-	//     var call = acorn.formatCall(entry, uuids, uuid);
-	//     callarr.push(call);
-	// }
-	var entry = entries[uuid];
-	var call = acorn.formatCall(entry, uuids, uuid);
-	callarr.push(call);
+	for (var ientry in entries[uuid]) {
+	    var entry = entries[uuid][ientry];
+	    var call = acorn.formatCall(entry, uuids, uuid);
+	    callarr.push(call);
+	}
     } else {
 	callarr.push({"method": null, "args": null, "timestamp": null,
 		      "instance": null, "returns": null, "code": null,

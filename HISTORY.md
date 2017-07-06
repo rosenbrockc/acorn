@@ -1,7 +1,13 @@
 # Revision History
 
+## Revision 0.0.21
+- Fixed a few bugs in base.js. The user interface for day views is now working.
+- Added documentation to base.js.
+- Added launch.py to the list of installed scripts in setup.py.
+- Fixed a bug in acorn.js.
+
 ## Revision 0.0.20.
-- Updates to detail_table.html template to create detail view modals.
+- Updates to detail_table.html template to create detail view modals.	
 - Updates to base.js to get the details needed for the template.
 
 ## Revision 0.0.19
