@@ -79,7 +79,7 @@ def _make_projcet_list(path):
     projects = OrderedDict()
     file_list = os.listdir(path)
     for files in file_list:
-        if files.split(".")[0] not in proj and 'json' in files:
+        if files.split(".")[0] not in proj and 'json' in files and "#" not in files and "~" not in files:
             proj.append(files.split(".")[0])
 
     # get the background color for each project.
@@ -88,7 +88,7 @@ def _make_projcet_list(path):
 
     for p in proj:
         tasks = OrderedDict()
-        temp = [x.split(".")[1] for x in file_list if p in x]
+        temp = [x.split(".")[1] for x in file_list if p in x and "#" not in x and "~" not in x]
         cmspace = linspace(0.95, 0.25, len(temp))
         cm = LinearSegmentedColormap.from_list("acorn.{}".format(p),
                                                ['#ffffff', colors[p_c]],
