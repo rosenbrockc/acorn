@@ -14,7 +14,13 @@ def open_window():
 def launch_server():
     """Launches the django server at 127.0.0.1:8000
     """
+    print(os.path.dirname(os.path.abspath(__file__)))
+    cur_dir = os.getcwd()
+    path = os.path.dirname(os.path.abspath(__file__))
+    run = True
+    os.chdir(path)
     os.system('python manage.py runserver --nostatic')
+    os.chdir(cur_dir)
 
 if __name__ == '__main__':
     Process(target=launch_server).start()    

@@ -1,13 +1,27 @@
+sudo: false
+addons:
+  apt:
+    packages:
+      - python-matplotlib
+      - python-scipy
+      - python-numpy
+      - pandoc
 language: python
 cache: pip
 python:
   - "2.7"
   - "3.5"
 # command to install dependencies
+virtualenv:
+    system_site_packages: false
+
 install:
+  - pip install --upgrade pip
+  - pip install scipy
+  - pip install numpy
+  - pip install --upgrade .
   - pip install --upgrade -r requirements.txt
   - pip install --upgrade tox-travis
-  - pip install --upgrade .
 # command to run tests
 script: tox
 after_success: coveralls

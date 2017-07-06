@@ -35,7 +35,7 @@ setup(name='acorn',
       ],
       packages=['acorn', 'acorn.logging', 'acorn.subclass', 'acorn.analyze',
                 'acorn.scipy', 'acorn.sklearn', 'acorn.matplotlib'],
-      scripts=['acorn/acrn.py'],
+      scripts=['acorn/acrn.py','server/launch.py'],
       package_data={'acorn': ['config/*.cfg', 'config/*.json', 'js/ipython.js']},
       include_package_data=True,
       classifiers=[

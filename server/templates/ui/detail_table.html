@@ -102,9 +102,14 @@
             <h4 class="modal-title">{% templatetag openvariable %}arg_idx{% templatetag closevariable %} Details</h4>
           </div><div class="container"></div>
           <div class="modal-body">
+	    <table class="table table-striped">
 		{% templatetag openvariable %}#details{% templatetag closevariable %}
-		<p>{% templatetag openvariable %}detail{% templatetag closevariable %}</p>
+		<tr>
+		  <td>{% templatetag openvariable %}paramater{% templatetag closevariable %}</td>
+		  <td>{% templatetag openvariable %}value{% templatetag closevariable %}</td>
+		</tr>
 		{% templatetag openvariable %}/details{% templatetag closevariable %}
+	    </table>
           </div>
           <div class="modal-footer">
             <a href="#" data-dismiss="modal" class="btn">Close</a>
@@ -127,9 +132,22 @@
             <h4 class="modal-title">{% templatetag openvariable %}return{% templatetag closevariable %} Details</h4>
           </div><div class="container"></div>
           <div class="modal-body">
+	    <table class="table table-striped">
+	      <thead>
+		<tr>
+		  <th>Parameter</th>
+		  <th>Value</th>
+		</tr>
+	      </thead>
+	      <tbody>
 		{% templatetag openvariable %}#details{% templatetag closevariable %}
-		<p>{% templatetag openvariable %}detail{% templatetag closevariable %}</p>
+		<tr>
+		  <td>{% templatetag openvariable %}paramater{% templatetag closevariable %}</td>
+		  <td>{% templatetag openvariable %}value{% templatetag closevariable %}</td>
+		</tr>
 		{% templatetag openvariable %}/details{% templatetag closevariable %}
+	      </tbody>
+	    </table>
           </div>
           <div class="modal-footer">
             <a href="#" data-dismiss="modal" class="btn">Close</a>
